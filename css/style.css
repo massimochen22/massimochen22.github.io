@@ -571,12 +571,16 @@ h1.arrow span {
     color: #111;
 }
 /* ==========================================================================About========================================================================== */
+
 .about-image {
+	background: url('../img/newsletter.png') no-repeat center center;
 	height:400px;
-	-webkit-background-size:cover;
-	-moz-background-size:cover;
-	-o-background-size:cover;
-	background-size:cover;
+	-webkit-background-size: auto 100%;
+    -moz-background-size: auto 100%;
+    -o-background-size: auto 100%;
+    background-size: auto 100%;
+    background-position: center;
+	
 }
 .color-bg {
 	background: rgba(1, 1, 1, 1);
