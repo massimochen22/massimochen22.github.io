@@ -453,39 +453,39 @@ table {
 }
 /* ==========================================================================Hero========================================================================== */
 .hero {
-	background: url('../img/header-bg.jpg') right bottom no-repeat;
-	background-size: contain;
-	padding:110px 0 100px 0;
-	height:auto;
-	background-color: #FBFBFB;
+    background: url('../img/header-bg.jpg') right bottom no-repeat;
+    background-size: cover;  /* changed from contain to cover */
+    padding: 110px 0 100px 0;
+    height: auto;
+    background-color: #FBFBFB;
 }
 .hero h1 {
-	font-size: 120px;
-	letter-spacing: -8px;
-	margin: 0;
-	font-weight: 600;
-	line-height: 95px;
-	text-transform: uppercase;
+    font-size: 120px;
+    letter-spacing: -8px;
+    margin: 0;
+    font-weight: 600;
+    line-height: 95px;
+    text-transform: uppercase;
 }
 .hero h1 span {
-	color:#a1a9b0;
-	/* display:inline-block; */
+    color:#a1a9b0;
 }
 .hero h3 {
-	font-size: 20px;
-	margin:0;
-	padding:0;
-	opacity:0.5;
-	color: #FFE800;
-	letter-spacing: 18px;
-	line-height: 50px;
-	text-transform: uppercase;
+    font-size: 20px;
+    margin:0;
+    padding:0;
+    opacity:0.5;
+    color: #FFE800;
+    letter-spacing: 18px;
+    line-height: 50px;
+    text-transform: uppercase;
 }
 .hero p {
-	letter-spacing:1px;
-	color:#fff;
-	font-size: 15px;
+    letter-spacing:1px;
+    color:#fff;
+    font-size: 15px;
 }
+
 /* Boucing Arrow Animation */
 @keyframes arrowbounce {
 	from {
