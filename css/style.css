@@ -771,6 +771,10 @@ a:hover { color: var(--text); text-decoration: none; outline: none; }
   align-items: center;
   justify-content: center;
   border-radius: 6px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  font-size: 0;
 }
 .mc-footer__top {
   width: 38px;
