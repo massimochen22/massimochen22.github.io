@@ -194,8 +194,15 @@ a:hover { color: var(--text); text-decoration: none; outline: none; }
   border-radius: 8px;
   transition: background var(--transition);
   text-decoration: none;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  font-size: 0;
 }
-.mc-nav__logo:hover { background: var(--accent); color: #0a0a0a; text-decoration: none; }
+.mc-nav__logo:hover { 
+  opacity: 0.8;
+  text-decoration: none; 
+}
 
 .mc-nav__links {
   display: flex;
