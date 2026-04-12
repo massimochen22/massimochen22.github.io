@@ -1,248 +1,575 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NYC Dynamic Itinerary Builder</title>
-  
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
-  
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NYC Dynamic Itinerary Builder</title>
 
-  <style>
-    :root {
-      --bg-color: #f4f5f7;
-      --board-bg: #ebecf0;
-      --card-bg: #ffffff;
-      --primary: #0079bf;
-      --text-main: #172b4d;
-      --text-light: #5e6c84;
-    }
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-    
-    header { background: var(--primary); color: white; padding: 15px 20px; font-size: 20px; font-weight: bold; box-shadow: 0 1px 3px rgba(0,0,0,0.2); z-index: 10; display: flex; justify-content: space-between; align-items: center;}
-    
-    .app-container { display: flex; flex: 1; overflow: hidden; }
-    
-    /* Map Panel Setup */
-    .map-panel { flex: 1; background: #e3e9f0; border-right: 2px solid #ccc; position: relative; }
-    #map { height: 100%; width: 100%; z-index: 1; }
-    
-    /* Map Overlay Instructions */
-    .map-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 2; background: rgba(255,255,255,0.9); padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; font-weight: bold; pointer-events: none; transition: opacity 0.3s; }
+    <style>
+        :root {
+            --bg-color: #f4f5f7;
+            --board-bg: #ebecf0;
+            --card-bg: #ffffff;
+            --primary: #0079bf;
+            --text-main: #172b4d;
+            --text-light: #5e6c84;
+        }
 
-    .kanban-panel { flex: 1.5; display: flex; overflow-x: auto; padding: 20px; gap: 15px; background: var(--bg-color); align-items: flex-start; }
-    
-    .column-wrapper { background: var(--board-bg); border-radius: 8px; width: 320px; min-width: 320px; max-height: 100%; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-    .column-header { padding: 12px 15px; border-bottom: 1px solid #ccc; }
-    .header-top { display: flex; justify-content: space-between; font-weight: bold; font-size: 15px; margin-bottom: 5px; align-items: center;}
-    .column-stats { font-size: 12px; color: var(--text-light); font-weight: normal; }
-    
-    .map-btn { background: #0079bf; color: white; border: none; border-radius: 4px; padding: 4px 8px; font-size: 11px; cursor: pointer; transition: background 0.2s;}
-    .map-btn:hover { background: #026aa7; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-    .card-list { padding: 10px; flex: 1; overflow-y: auto; min-height: 150px; }
-    
-    .kanban-card { background: var(--card-bg); border-radius: 6px; padding: 12px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(9,30,66,0.25); cursor: grab; font-size: 14px; position: relative; border-left: 4px solid transparent; }
-    .kanban-card:active { cursor: grabbing; }
-    
-    .cat-food { border-left-color: #f2d600; }
-    .cat-attraction { border-left-color: #ff9f1a; }
-    .cat-activity { border-left-color: #eb5a46; }
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 12px 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
 
-    .card-title { font-weight: bold; margin-bottom: 6px; }
-    .card-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-light); }
-    .card-tag { display: inline-block; background: #dfe1e6; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-top: 6px; }
+        .header-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
 
-    @media (max-width: 768px) {
-      .app-container { flex-direction: column; }
-      .map-panel { flex: 0.8; border-right: none; border-bottom: 2px solid #ccc; }
-      .kanban-panel { flex: 1.2; padding: 10px; }
-    }
-  </style>
+        /* NEW: Control Panel Buttons */
+        .controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            border-radius: 4px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-add {
+            background: #5aac44;
+            border-color: #5aac44;
+        }
+
+        .btn-add:hover {
+            background: #61bd4f;
+        }
+
+        .app-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .map-panel {
+            flex: 1;
+            background: #e3e9f0;
+            border-right: 2px solid #ccc;
+            position: relative;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+
+        .map-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            font-weight: bold;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .kanban-panel {
+            flex: 1.5;
+            display: flex;
+            overflow-x: auto;
+            padding: 20px;
+            gap: 15px;
+            background: var(--bg-color);
+            align-items: flex-start;
+        }
+
+        .column-wrapper {
+            background: var(--board-bg);
+            border-radius: 8px;
+            width: 320px;
+            min-width: 320px;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .column-header {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+            font-size: 15px;
+            margin-bottom: 5px;
+            align-items: center;
+        }
+
+        .column-stats {
+            font-size: 12px;
+            color: var(--text-light);
+            font-weight: normal;
+        }
+
+        .map-btn {
+            background: #0079bf;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .map-btn:hover {
+            background: #026aa7;
+        }
+
+        .card-list {
+            padding: 10px;
+            flex: 1;
+            overflow-y: auto;
+            min-height: 150px;
+        }
+
+        .kanban-card {
+            background: var(--card-bg);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            box-shadow: 0 1px 2px rgba(9, 30, 66, 0.25);
+            cursor: grab;
+            font-size: 14px;
+            position: relative;
+            border-left: 4px solid transparent;
+        }
+
+        .kanban-card:active {
+            cursor: grabbing;
+        }
+
+        /* NEW: Delete Button */
+        .delete-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: none;
+            border: none;
+            color: #a5adba;
+            cursor: pointer;
+            font-size: 14px;
+            display: none;
+        }
+
+        .kanban-card:hover .delete-btn {
+            display: block;
+        }
+
+        .delete-btn:hover {
+            color: #eb5a46;
+        }
+
+        .cat-food {
+            border-left-color: #f2d600;
+        }
+
+        .cat-attraction {
+            border-left-color: #ff9f1a;
+        }
+
+        .cat-activity {
+            border-left-color: #eb5a46;
+        }
+
+        .card-title {
+            font-weight: bold;
+            margin-bottom: 6px;
+            padding-right: 15px;
+        }
+
+        .card-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        .card-tag {
+            display: inline-block;
+            background: #dfe1e6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-top: 6px;
+        }
+
+        /* Search Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(9, 30, 66, 0.54);
+            z-index: 1000;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 10vh;
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 8px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 18px;
+            font-weight: bold;
+            border-bottom: 2px solid #ebecf0;
+            padding-bottom: 10px;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #5e6c84;
+        }
+
+        .close-modal:hover {
+            color: #eb5a46;
+        }
+
+        .search-input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-input-group input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #dfe1e6;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .search-input-group input:focus {
+            border-color: #0079bf;
+            outline: none;
+        }
+
+        .search-results-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dfe1e6;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .search-result-item {
+            padding: 12px;
+            border-bottom: 1px solid #ebecf0;
+            font-size: 13px;
+            cursor: pointer;
+            color: var(--text-main);
+            line-height: 1.4;
+            transition: background 0.2s;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-item:hover {
+            background: #e3e9f0;
+        }
+
+        .search-loading {
+            font-size: 13px;
+            color: #5e6c84;
+            text-align: center;
+            padding: 10px;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+            }
+
+            .map-panel {
+                flex: 0.8;
+                border-right: none;
+                border-bottom: 2px solid #ccc;
+            }
+
+            .kanban-panel {
+                flex: 1.2;
+                padding: 10px;
+            }
+        }
+    </style>
 </head>
+
 <body>
+    <div class="modal-overlay" id="search-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>🔍 Find a Place</span>
+                <button class="close-modal" onclick="closeSearchModal()">✖</button>
+            </div>
+            <div class="search-input-group">
+                <input type="text" id="place-search-input" placeholder="e.g., Katz Deli, NYC"
+                    onkeypress="if(event.key === 'Enter') executeSearch()">
+                <button class="btn btn-add" onclick="executeSearch()">Search</button>
+            </div>
+            <div id="search-loading" class="search-loading">Searching OpenStreetMap...</div>
+            <ul id="search-results" class="search-results-list"></ul>
 
-<header>
-  <div>NYC May Trip Planner</div>
-  <div style="font-size: 14px; font-weight: normal;">Drag items to plan, then click "View Route" on any day.</div>
-</header>
+            <div style="text-align: center; margin-top: 15px; font-size: 13px; color: #5e6c84;">
+                Can't find it? <a href="#" onclick="addManualItem(); return false;"
+                    style="color: #0079bf; text-decoration: underline; font-weight: bold;">Add it manually</a>
+            </div>
 
-<div class="app-container">
-  <div class="map-panel">
-    <div id="map-overlay" class="map-overlay">🗺️ Click "View Route" on a day to load pins!</div>
-    <div id="map"></div>
-  </div>
-
-  <div class="kanban-panel" id="kanban-board">
-    <div class="column-wrapper" style="background: #e1e4e8; border: 1px solid #ccc;">
-      <div class="column-header">
-        <div class="header-top">🗂️ Master List</div>
-      </div>
-      <div class="card-list" id="backlog-list"></div>
+        </div>
     </div>
+    <header>
+        <div>
+            <div class="header-title">NYC Trip Planner</div>
+            <div style="font-size: 12px; font-weight: normal; opacity: 0.8;">Auto-saves to your device. Export to share
+                with friends!</div>
+        </div>
+        <div class="controls">
+            <button class="btn btn-add" onclick="openSearchModal()">+ Add Place</button>
+            <button class="btn" onclick="exportPlan()">📤 Export</button>
+            <button class="btn" onclick="importPlan()">📥 Import</button>
+            <button class="btn" onclick="clearPlan()" style="background:#eb5a46; border-color:#eb5a46;">Reset</button>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <div class="map-panel">
+            <div id="map-overlay" class="map-overlay">🗺️ Click "View Route" on a day to load pins!</div>
+            <div id="map"></div>
+        </div>
+
+        <div class="kanban-panel" id="kanban-board">
+            <div class="column-wrapper" style="background: #e1e4e8; border: 1px solid #ccc;">
+                <div class="column-header">
+                    <div class="header-top">🗂️ Master List</div>
+                </div>
+                <div class="card-list" id="backlog-list"></div>
+            </div>
+        </div>
     </div>
-</div>
 
-<script>
-  // -- YOUR DATA PASTE HERE --
-  const masterData = [
-  { "id": "broadway", "title": "Broadway Show", "category": "Activity", "region": "NYC", "lat": 40.7590, "lng": -73.9845, "cost": 150, "duration": 180, "tags": ["Theater", "Indoor"] },
-  { "id": "shooting_range", "title": "Shooting Range", "category": "Activity", "region": "NJ", "lat": 40.8906, "lng": -74.1920, "cost": 80, "duration": 120, "tags": ["Action", "Indoor"] },
-  { "id": "climbing_gym", "title": "Climbing Gym", "category": "Activity", "region": "NYC", "lat": 40.7480, "lng": -73.9450, "cost": 30, "duration": 120, "tags": ["Fitness", "Indoor"] },
-  { "id": "escape_room", "title": "Escape the Room", "category": "Activity", "region": "NYC", "lat": 40.7500, "lng": -73.9900, "cost": 40, "duration": 60, "tags": ["Puzzle", "Indoor"] },
-  { "id": "cat_cafe", "title": "Cat Cafe", "category": "Activity", "region": "NYC", "lat": 40.7180, "lng": -73.9900, "cost": 25, "duration": 60, "tags": ["Animals", "Relaxing"] },
-  { "id": "museum_generic", "title": "Museum", "category": "Attraction", "region": "NYC", "lat": 40.7794, "lng": -73.9632, "cost": 30, "duration": 180, "tags": ["Culture", "Indoor"] },
-  { "id": "dog_cafe", "title": "Dog Cafe", "category": "Activity", "region": "NYC", "lat": 40.7180, "lng": -73.9900, "cost": 25, "duration": 60, "tags": ["Animals", "Relaxing"] },
-  { "id": "statue_liberty", "title": "Statue of Liberty Boat", "category": "Attraction", "region": "NYC", "lat": 40.7024, "lng": -74.0168, "cost": 30, "duration": 180, "tags": ["Sightseeing", "Outdoor"] },
-  { "id": "911_museum", "title": "9/11 Museum", "category": "Attraction", "region": "NYC", "lat": 40.7115, "lng": -74.0134, "cost": 33, "duration": 120, "tags": ["History", "Indoor"] },
-  { "id": "under_k_bridge", "title": "Under the K Bridge", "category": "Attraction", "region": "NYC", "lat": 40.7240, "lng": -73.9380, "cost": 0, "duration": 60, "tags": ["Park", "Urban"] },
-  { "id": "jazz_club", "title": "Jazz Club", "category": "Activity", "region": "NYC", "lat": 40.7306, "lng": -74.0006, "cost": 40, "duration": 120, "tags": ["Music", "Nightlife"] },
-  { "id": "clubs", "title": "Clubs", "category": "Activity", "region": "NYC", "lat": 40.7400, "lng": -74.0050, "cost": 50, "duration": 240, "tags": ["Nightlife", "Party"] },
-  { "id": "go_kart", "title": "Go Kart", "category": "Activity", "region": "NJ", "lat": 40.7120, "lng": -74.0680, "cost": 60, "duration": 90, "tags": ["Action", "Indoor"] },
-  { "id": "top_golf", "title": "Top Golf", "category": "Activity", "region": "NJ", "lat": 40.5230, "lng": -74.3460, "cost": 50, "duration": 120, "tags": ["Sports", "Social"] },
-  { "id": "indian_face_wash", "title": "Indian Face Wash (KissKiss)", "category": "Activity", "region": "NYC", "lat": 40.7480, "lng": -73.9870, "cost": 100, "duration": 60, "tags": ["Spa", "Relaxation"] },
-  { "id": "roosevelt_tram", "title": "Roosevelt Island Tram", "category": "Attraction", "region": "NYC", "lat": 40.7615, "lng": -73.9634, "cost": 3, "duration": 45, "tags": ["Views", "Transit"] },
-  { "id": "underground_spa", "title": "Underground Spa", "category": "Activity", "region": "NYC", "lat": 40.7170, "lng": -74.0000, "cost": 90, "duration": 150, "tags": ["Relaxation", "Indoor"] },
-  { "id": "six_flags", "title": "Six Flags", "category": "Activity", "region": "NJ", "lat": 40.1370, "lng": -74.4400, "cost": 80, "duration": 360, "tags": ["Theme Park", "Outdoor"] },
-  { "id": "korean_spa_palisades", "title": "Korean Spa (Palisades Park)", "category": "Activity", "region": "NJ", "lat": 40.8350, "lng": -73.9980, "cost": 50, "duration": 240, "tags": ["Relaxation", "Indoor"] },
-  { "id": "princeton", "title": "Princeton University", "category": "Attraction", "region": "NJ", "lat": 40.3440, "lng": -74.6514, "cost": 0, "duration": 180, "tags": ["Walking", "Architecture"] },
-  { "id": "mercer_labs", "title": "Mercer Labs", "category": "Attraction", "region": "NYC", "lat": 40.7100, "lng": -74.0080, "cost": 52, "duration": 90, "tags": ["Art", "Immersive"] },
-  { "id": "superreal", "title": "SuperReal", "category": "Attraction", "region": "NYC", "lat": 40.7050, "lng": -74.0130, "cost": 35, "duration": 60, "tags": ["Art", "Immersive"] },
-  { "id": "nba_game", "title": "NBA Game", "category": "Activity", "region": "NYC", "lat": 40.7505, "lng": -73.9934, "cost": 120, "duration": 180, "tags": ["Sports", "Event"] },
-  { "id": "concert", "title": "Concert", "category": "Activity", "region": "NYC", "lat": 40.7500, "lng": -73.9900, "cost": 100, "duration": 180, "tags": ["Music", "Event"] },
-  { "id": "summit_one", "title": "Summit One Vanderbilt", "category": "Attraction", "region": "NYC", "lat": 40.7529, "lng": -73.9785, "cost": 42, "duration": 120, "tags": ["Views", "Immersive"] },
-  { "id": "ghostbuster_firehouse", "title": "Ghostbuster Firehouse", "category": "Attraction", "region": "NYC", "lat": 40.7196, "lng": -74.0066, "cost": 0, "duration": 15, "tags": ["Pop Culture", "Photo Op"] },
-  { "id": "times_square", "title": "Times Square", "category": "Attraction", "region": "NYC", "lat": 40.7580, "lng": -73.9855, "cost": 0, "duration": 45, "tags": ["Iconic", "Walking"] },
-  { "id": "soho", "title": "Soho", "category": "Attraction", "region": "NYC", "lat": 40.7233, "lng": -74.0030, "cost": 0, "duration": 120, "tags": ["Shopping", "Walking"] },
-  { "id": "dumbo", "title": "Dumbo", "category": "Attraction", "region": "NYC", "lat": 40.7033, "lng": -73.9896, "cost": 0, "duration": 90, "tags": ["Views", "Walking"] },
-  { "id": "flushing", "title": "Flushing", "category": "Attraction", "region": "NYC", "lat": 40.7654, "lng": -73.8276, "cost": 0, "duration": 120, "tags": ["Food", "Culture"] },
-  { "id": "ktown", "title": "Ktown", "category": "Attraction", "region": "NYC", "lat": 40.7476, "lng": -73.9868, "cost": 0, "duration": 90, "tags": ["Food", "Nightlife"] },
-  { "id": "bronx_zoo", "title": "The Bronx Zoo", "category": "Attraction", "region": "NYC", "lat": 40.8506, "lng": -73.8770, "cost": 33, "duration": 240, "tags": ["Animals", "Walking"] },
-  { "id": "met", "title": "The MET", "category": "Attraction", "region": "NYC", "lat": 40.7794, "lng": -73.9632, "cost": 30, "duration": 240, "tags": ["Art", "Indoor"] },
-  { "id": "central_park", "title": "Central Park", "category": "Attraction", "region": "NYC", "lat": 40.7812, "lng": -73.9665, "cost": 0, "duration": 180, "tags": ["Park", "Walking"] },
-  { "id": "chinatown", "title": "Chinatown", "category": "Attraction", "region": "NYC", "lat": 40.7158, "lng": -73.9970, "cost": 0, "duration": 90, "tags": ["Food", "Culture"] },
-  { "id": "wall_street", "title": "Wall Street", "category": "Attraction", "region": "NYC", "lat": 40.7071, "lng": -74.0105, "cost": 0, "duration": 45, "tags": ["History", "Walking"] },
-  { "id": "bk_bridge", "title": "Brooklyn Bridge", "category": "Attraction", "region": "NYC", "lat": 40.7061, "lng": -73.9969, "cost": 0, "duration": 60, "tags": ["Iconic", "Walking"] },
-  { "id": "bk_bridge_basketball", "title": "Bk Bridge Park Basketball", "category": "Activity", "region": "NYC", "lat": 40.7000, "lng": -73.9970, "cost": 0, "duration": 60, "tags": ["Sports", "Park"] },
-  { "id": "chelsea_market", "title": "Chelsea Market", "category": "Attraction", "region": "NYC", "lat": 40.7423, "lng": -74.0062, "cost": 0, "duration": 60, "tags": ["Food Hall", "Indoor"] },
-  { "id": "the_vessel", "title": "The Vessel", "category": "Attraction", "region": "NYC", "lat": 40.7538, "lng": -74.0016, "cost": 0, "duration": 30, "tags": ["Architecture", "Photo Op"] },
-  { "id": "the_highline", "title": "The Highline", "category": "Attraction", "region": "NYC", "lat": 40.7480, "lng": -74.0048, "cost": 0, "duration": 60, "tags": ["Park", "Walking"] },
-  { "id": "rockefeller", "title": "Rockefeller Center", "category": "Attraction", "region": "NYC", "lat": 40.7587, "lng": -73.9787, "cost": 0, "duration": 45, "tags": ["Iconic", "Walking"] },
-  { "id": "union_square", "title": "Union Square", "category": "Attraction", "region": "NYC", "lat": 40.7359, "lng": -73.9911, "cost": 0, "duration": 30, "tags": ["Park", "Vibe Check"] },
-  { "id": "grand_central", "title": "Grand Central Station", "category": "Attraction", "region": "NYC", "lat": 40.7527, "lng": -73.9772, "cost": 0, "duration": 30, "tags": ["Architecture", "Indoor"] },
-  { "id": "empire_state", "title": "Empire State Building", "category": "Attraction", "region": "NYC", "lat": 40.7484, "lng": -73.9857, "cost": 44, "duration": 90, "tags": ["Views", "Iconic"] },
-  { "id": "washington_sq", "title": "Washington Square Park", "category": "Attraction", "region": "NYC", "lat": 40.7308, "lng": -73.9973, "cost": 0, "duration": 45, "tags": ["Park", "People Watching"] },
-  { "id": "coney_island", "title": "Coney Island", "category": "Attraction", "region": "NYC", "lat": 40.5749, "lng": -73.9780, "cost": 0, "duration": 180, "tags": ["Beach", "Amusement"] },
-  { "id": "jackson_heights", "title": "Jackson Heights (Little India)", "category": "Attraction", "region": "NYC", "lat": 40.7484, "lng": -73.8841, "cost": 0, "duration": 90, "tags": ["Culture", "Food"] },
-  { "id": "nyc_library_rooftop", "title": "NYC Public Library Rooftop", "category": "Attraction", "region": "NYC", "lat": 40.7532, "lng": -73.9822, "cost": 0, "duration": 45, "tags": ["Views", "Architecture"] },
-  { "id": "observatory_generic", "title": "Observatory (One World)", "category": "Attraction", "region": "NYC", "lat": 40.7130, "lng": -74.0131, "cost": 44, "duration": 90, "tags": ["Views", "Indoor"] },
-  { "id": "apple_store", "title": "Apple Store (5th Ave)", "category": "Attraction", "region": "NYC", "lat": 40.7635, "lng": -73.9723, "cost": 0, "duration": 30, "tags": ["Tech", "Architecture"] },
-  { "id": "mitr", "title": "Mitr Thai", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.9800, "cost": 40, "duration": 90, "tags": ["Thai", "Sit-down"] },
-  { "id": "panakon", "title": "Panakon", "category": "Food", "region": "NYC", "lat": 40.7585, "lng": -73.9850, "cost": 35, "duration": 90, "tags": ["Asian", "Casual"] },
-  { "id": "emily", "title": "Emily (Pizza)", "category": "Food", "region": "NYC", "lat": 40.6833, "lng": -73.9664, "cost": 30, "duration": 90, "tags": ["Pizza", "Burger"] },
-  { "id": "crepe_guru", "title": "Crepe Guru", "category": "Food", "region": "NJ", "lat": 40.7420, "lng": -74.0280, "cost": 15, "duration": 30, "tags": ["Dessert", "Quick"] },
-  { "id": "tswipe", "title": "T-Swirl Crepe", "category": "Food", "region": "NYC", "lat": 40.7150, "lng": -73.9950, "cost": 10, "duration": 30, "tags": ["Dessert", "Quick"] },
-  { "id": "molly_tea", "title": "Molly Tea", "category": "Food", "region": "NYC", "lat": 40.7600, "lng": -73.8300, "cost": 8, "duration": 20, "tags": ["Boba", "Drinks"] },
-  { "id": "hey_tea", "title": "Hey Tea", "category": "Food", "region": "NYC", "lat": 40.7530, "lng": -73.9850, "cost": 10, "duration": 20, "tags": ["Boba", "Drinks"] },
-  { "id": "baos_pastry", "title": "Bao's Pastry", "category": "Food", "region": "NYC", "lat": 40.7250, "lng": -74.0000, "cost": 15, "duration": 30, "tags": ["Bakery", "Snack"] },
-  { "id": "mixue", "title": "Mixue", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 5, "duration": 15, "tags": ["Dessert", "Drinks"] },
-  { "id": "im_donut", "title": "I'm Donut", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.9850, "cost": 10, "duration": 20, "tags": ["Dessert", "Snack"] },
-  { "id": "gopchang", "title": "Gopchang (Intestines BBQ)", "category": "Food", "region": "NJ", "lat": 40.8400, "lng": -73.9950, "cost": 50, "duration": 120, "tags": ["Korean", "Dinner"] },
-  { "id": "pocha_22", "title": "Pocha 22", "category": "Food", "region": "NYC", "lat": 40.7470, "lng": -73.9870, "cost": 40, "duration": 120, "tags": ["Korean", "Nightlife"] },
-  { "id": "k_bbq_nj", "title": "K BBQ NJ", "category": "Food", "region": "NJ", "lat": 40.8500, "lng": -73.9700, "cost": 45, "duration": 120, "tags": ["Korean", "Dinner"] },
-  { "id": "indian_food", "title": "Indian Food", "category": "Food", "region": "NYC", "lat": 40.7484, "lng": -73.8841, "cost": 30, "duration": 90, "tags": ["Indian", "Dinner"] },
-  { "id": "pho_banh", "title": "Pho (Banh)", "category": "Food", "region": "NYC", "lat": 40.7200, "lng": -74.0000, "cost": 20, "duration": 60, "tags": ["Vietnamese", "Lunch"] },
-  { "id": "steak_house", "title": "Steak House", "category": "Food", "region": "NYC", "lat": 40.7500, "lng": -73.9800, "cost": 100, "duration": 120, "tags": ["Fine Dining", "Dinner"] },
-  { "id": "chipotle", "title": "Chipotle", "category": "Food", "region": "NYC", "lat": 40.7500, "lng": -73.9900, "cost": 15, "duration": 30, "tags": ["Fast Food", "Quick"] },
-  { "id": "popeyes", "title": "American Fried Chicken", "category": "Food", "region": "NYC", "lat": 40.7500, "lng": -73.9900, "cost": 15, "duration": 30, "tags": ["Fast Food", "Quick"] },
-  { "id": "korean_ck", "title": "Korean Fried Chicken", "category": "Food", "region": "NYC", "lat": 40.7470, "lng": -73.9870, "cost": 25, "duration": 60, "tags": ["Korean", "Casual"] },
-  { "id": "congee_village", "title": "Congee Village", "category": "Food", "region": "NYC", "lat": 40.7180, "lng": -73.9900, "cost": 25, "duration": 90, "tags": ["Chinese", "Sit-down"] },
-  { "id": "house_of_joy", "title": "House of Joy", "category": "Food", "region": "NYC", "lat": 40.7150, "lng": -73.9970, "cost": 30, "duration": 90, "tags": ["Dim Sum", "Chinese"] },
-  { "id": "afghan_food", "title": "Afghan Food", "category": "Food", "region": "NYC", "lat": 40.7600, "lng": -73.9000, "cost": 30, "duration": 90, "tags": ["Afghan", "Dinner"] },
-  { "id": "wagyu_bbq", "title": "Wagyu BBQ", "category": "Food", "region": "NYC", "lat": 40.7470, "lng": -73.9870, "cost": 100, "duration": 120, "tags": ["Premium", "Dinner"] },
-  { "id": "china_baozi", "title": "China Underground Baozi", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 15, "duration": 45, "tags": ["Chinese", "Street Food"] },
-  { "id": "mei_lai_wah", "title": "Mei Lai Wah", "category": "Food", "region": "NYC", "lat": 40.7150, "lng": -73.9980, "cost": 10, "duration": 30, "tags": ["Bakery", "Pork Buns"] },
-  { "id": "cajun_food", "title": "Cajun Food", "category": "Food", "region": "NYC", "lat": 40.7500, "lng": -73.9900, "cost": 40, "duration": 90, "tags": ["Seafood", "Dinner"] },
-  { "id": "flushing_skewers", "title": "Skewers / Jianbing / Guokui", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 15, "duration": 45, "tags": ["Chinese", "Street Food"] },
-  { "id": "waffle_manhattan", "title": "Waffle in Manhattan", "category": "Food", "region": "NYC", "lat": 40.7500, "lng": -73.9850, "cost": 12, "duration": 30, "tags": ["Dessert", "Quick"] },
-  { "id": "ichiran", "title": "Ichiran Ramen", "category": "Food", "region": "NYC", "lat": 40.7500, "lng": -73.9850, "cost": 25, "duration": 60, "tags": ["Japanese", "Solo Dining"] },
-  { "id": "haidilao", "title": "Haidilao Hot Pot", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 50, "duration": 120, "tags": ["Hot Pot", "Dinner"] },
-  { "id": "xiaolongkan", "title": "Xiaolongkan Hot Pot", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 50, "duration": 120, "tags": ["Hot Pot", "Dinner"] },
-  { "id": "beijing_duck", "title": "Beijing Roast Duck", "category": "Food", "region": "NYC", "lat": 40.7150, "lng": -73.9970, "cost": 45, "duration": 90, "tags": ["Chinese", "Fine Dining"] },
-  { "id": "lebanese_arabic", "title": "Lebanese / Arabic Food", "category": "Food", "region": "NYC", "lat": 40.7650, "lng": -73.9100, "cost": 30, "duration": 90, "tags": ["Middle Eastern", "Dinner"] },
-  { "id": "uyghur", "title": "Uyghur Food", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 30, "duration": 90, "tags": ["Central Asian", "Dinner"] },
-  { "id": "dongbei", "title": "Dongbei Cuisine", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 30, "duration": 90, "tags": ["Chinese", "Hearty"] },
-  { "id": "halal_truck", "title": "Halal Street Food Truck", "category": "Food", "region": "NYC", "lat": 40.7610, "lng": -73.9790, "cost": 12, "duration": 20, "tags": ["Street Food", "Late Night"] }
-];
+    <script>
+        // --- DEFAULT DATA (Used only if LocalStorage is empty) ---
+        const masterData = [
+            { "id": "broadway", "title": "Broadway Show", "category": "Activity", "region": "NYC", "lat": 40.7590, "lng": -73.9845, "cost": 150, "duration": 180, "tags": ["Theater", "Indoor"] },
+            { "id": "shooting_range", "title": "Shooting Range", "category": "Activity", "region": "NJ", "lat": 40.8906, "lng": -74.1920, "cost": 80, "duration": 120, "tags": ["Action", "Indoor"] },
+            { "id": "climbing_gym", "title": "Climbing Gym", "category": "Activity", "region": "NYC", "lat": 40.7480, "lng": -73.9450, "cost": 30, "duration": 120, "tags": ["Fitness", "Indoor"] },
+            { "id": "escape_room", "title": "Escape the Room", "category": "Activity", "region": "NYC", "lat": 40.7500, "lng": -73.9900, "cost": 40, "duration": 60, "tags": ["Puzzle", "Indoor"] },
+            { "id": "cat_cafe", "title": "Cat Cafe", "category": "Activity", "region": "NYC", "lat": 40.7180, "lng": -73.9900, "cost": 25, "duration": 60, "tags": ["Animals", "Relaxing"] },
+            { "id": "museum_generic", "title": "Museum", "category": "Attraction", "region": "NYC", "lat": 40.7794, "lng": -73.9632, "cost": 30, "duration": 180, "tags": ["Culture", "Indoor"] },
+            { "id": "dog_cafe", "title": "Dog Cafe", "category": "Activity", "region": "NYC", "lat": 40.7180, "lng": -73.9900, "cost": 25, "duration": 60, "tags": ["Animals", "Relaxing"] },
+            { "id": "statue_liberty", "title": "Statue of Liberty Boat", "category": "Attraction", "region": "NYC", "lat": 40.7024, "lng": -74.0168, "cost": 30, "duration": 180, "tags": ["Sightseeing", "Outdoor"] },
+            { "id": "911_museum", "title": "9/11 Museum", "category": "Attraction", "region": "NYC", "lat": 40.7115, "lng": -74.0134, "cost": 33, "duration": 120, "tags": ["History", "Indoor"] },
+            { "id": "under_k_bridge", "title": "Under the K Bridge", "category": "Attraction", "region": "NYC", "lat": 40.7240, "lng": -73.9380, "cost": 0, "duration": 60, "tags": ["Park", "Urban"] },
+            { "id": "jazz_club", "title": "Jazz Club", "category": "Activity", "region": "NYC", "lat": 40.7306, "lng": -74.0006, "cost": 40, "duration": 120, "tags": ["Music", "Nightlife"] },
+            { "id": "clubs", "title": "Clubs", "category": "Activity", "region": "NYC", "lat": 40.7400, "lng": -74.0050, "cost": 50, "duration": 240, "tags": ["Nightlife", "Party"] },
+            { "id": "go_kart", "title": "Go Kart", "category": "Activity", "region": "NJ", "lat": 40.7120, "lng": -74.0680, "cost": 60, "duration": 90, "tags": ["Action", "Indoor"] },
+            { "id": "top_golf", "title": "Top Golf", "category": "Activity", "region": "NJ", "lat": 40.5230, "lng": -74.3460, "cost": 50, "duration": 120, "tags": ["Sports", "Social"] },
+            { "id": "indian_face_wash", "title": "Indian Face Wash (KissKiss)", "category": "Activity", "region": "NYC", "lat": 40.7480, "lng": -73.9870, "cost": 100, "duration": 60, "tags": ["Spa", "Relaxation"] },
+            { "id": "roosevelt_tram", "title": "Roosevelt Island Tram", "category": "Attraction", "region": "NYC", "lat": 40.7615, "lng": -73.9634, "cost": 3, "duration": 45, "tags": ["Views", "Transit"] },
+            { "id": "underground_spa", "title": "Underground Spa", "category": "Activity", "region": "NYC", "lat": 40.7170, "lng": -74.0000, "cost": 90, "duration": 150, "tags": ["Relaxation", "Indoor"] },
+            { "id": "six_flags", "title": "Six Flags", "category": "Activity", "region": "NJ", "lat": 40.1370, "lng": -74.4400, "cost": 80, "duration": 360, "tags": ["Theme Park", "Outdoor"] },
+            { "id": "korean_spa_palisades", "title": "Korean Spa (Palisades Park)", "category": "Activity", "region": "NJ", "lat": 40.8350, "lng": -73.9980, "cost": 50, "duration": 240, "tags": ["Relaxation", "Indoor"] },
+            { "id": "princeton", "title": "Princeton University", "category": "Attraction", "region": "NJ", "lat": 40.3440, "lng": -74.6514, "cost": 0, "duration": 180, "tags": ["Walking", "Architecture"] },
+            { "id": "mercer_labs", "title": "Mercer Labs", "category": "Attraction", "region": "NYC", "lat": 40.7100, "lng": -74.0080, "cost": 52, "duration": 90, "tags": ["Art", "Immersive"] },
+            { "id": "superreal", "title": "SuperReal", "category": "Attraction", "region": "NYC", "lat": 40.7050, "lng": -74.0130, "cost": 35, "duration": 60, "tags": ["Art", "Immersive"] },
+            { "id": "nba_game", "title": "NBA Game", "category": "Activity", "region": "NYC", "lat": 40.7505, "lng": -73.9934, "cost": 120, "duration": 180, "tags": ["Sports", "Event"] },
+            { "id": "concert", "title": "Concert", "category": "Activity", "region": "NYC", "lat": 40.7500, "lng": -73.9900, "cost": 100, "duration": 180, "tags": ["Music", "Event"] },
+            { "id": "summit_one", "title": "Summit One Vanderbilt", "category": "Attraction", "region": "NYC", "lat": 40.7529, "lng": -73.9785, "cost": 42, "duration": 120, "tags": ["Views", "Immersive"] },
+            { "id": "ghostbuster_firehouse", "title": "Ghostbuster Firehouse", "category": "Attraction", "region": "NYC", "lat": 40.7196, "lng": -74.0066, "cost": 0, "duration": 15, "tags": ["Pop Culture", "Photo Op"] },
+            { "id": "times_square", "title": "Times Square", "category": "Attraction", "region": "NYC", "lat": 40.7580, "lng": -73.9855, "cost": 0, "duration": 45, "tags": ["Iconic", "Walking"] },
+            { "id": "soho", "title": "Soho", "category": "Attraction", "region": "NYC", "lat": 40.7233, "lng": -74.0030, "cost": 0, "duration": 120, "tags": ["Shopping", "Walking"] },
+            { "id": "dumbo", "title": "Dumbo", "category": "Attraction", "region": "NYC", "lat": 40.7033, "lng": -73.9896, "cost": 0, "duration": 90, "tags": ["Views", "Walking"] },
+            { "id": "flushing", "title": "Flushing", "category": "Attraction", "region": "NYC", "lat": 40.7654, "lng": -73.8276, "cost": 0, "duration": 120, "tags": ["Food", "Culture"] },
+            { "id": "ktown", "title": "Ktown", "category": "Attraction", "region": "NYC", "lat": 40.7476, "lng": -73.9868, "cost": 0, "duration": 90, "tags": ["Food", "Nightlife"] },
+            { "id": "bronx_zoo", "title": "The Bronx Zoo", "category": "Attraction", "region": "NYC", "lat": 40.8506, "lng": -73.8770, "cost": 33, "duration": 240, "tags": ["Animals", "Walking"] },
+            { "id": "met", "title": "The MET", "category": "Attraction", "region": "NYC", "lat": 40.7794, "lng": -73.9632, "cost": 30, "duration": 240, "tags": ["Art", "Indoor"] },
+            { "id": "central_park", "title": "Central Park", "category": "Attraction", "region": "NYC", "lat": 40.7812, "lng": -73.9665, "cost": 0, "duration": 180, "tags": ["Park", "Walking"] },
+            { "id": "chinatown", "title": "Chinatown", "category": "Attraction", "region": "NYC", "lat": 40.7158, "lng": -73.9970, "cost": 0, "duration": 90, "tags": ["Food", "Culture"] },
+            { "id": "wall_street", "title": "Wall Street", "category": "Attraction", "region": "NYC", "lat": 40.7071, "lng": -74.0105, "cost": 0, "duration": 45, "tags": ["History", "Walking"] },
+            { "id": "bk_bridge", "title": "Brooklyn Bridge", "category": "Attraction", "region": "NYC", "lat": 40.7061, "lng": -73.9969, "cost": 0, "duration": 60, "tags": ["Iconic", "Walking"] },
+            { "id": "bk_bridge_basketball", "title": "Bk Bridge Park Basketball", "category": "Activity", "region": "NYC", "lat": 40.7000, "lng": -73.9970, "cost": 0, "duration": 60, "tags": ["Sports", "Park"] },
+            { "id": "chelsea_market", "title": "Chelsea Market", "category": "Attraction", "region": "NYC", "lat": 40.7423, "lng": -74.0062, "cost": 0, "duration": 60, "tags": ["Food Hall", "Indoor"] },
+            { "id": "the_vessel", "title": "The Vessel", "category": "Attraction", "region": "NYC", "lat": 40.7538, "lng": -74.0016, "cost": 0, "duration": 30, "tags": ["Architecture", "Photo Op"] },
+            { "id": "the_highline", "title": "The Highline", "category": "Attraction", "region": "NYC", "lat": 40.7480, "lng": -74.0048, "cost": 0, "duration": 60, "tags": ["Park", "Walking"] },
+            { "id": "rockefeller", "title": "Rockefeller Center", "category": "Attraction", "region": "NYC", "lat": 40.7587, "lng": -73.9787, "cost": 0, "duration": 45, "tags": ["Iconic", "Walking"] },
+            { "id": "union_square", "title": "Union Square", "category": "Attraction", "region": "NYC", "lat": 40.7359, "lng": -73.9911, "cost": 0, "duration": 30, "tags": ["Park", "Vibe Check"] },
+            { "id": "grand_central", "title": "Grand Central Station", "category": "Attraction", "region": "NYC", "lat": 40.7527, "lng": -73.9772, "cost": 0, "duration": 30, "tags": ["Architecture", "Indoor"] },
+            { "id": "empire_state", "title": "Empire State Building", "category": "Attraction", "region": "NYC", "lat": 40.7484, "lng": -73.9857, "cost": 44, "duration": 90, "tags": ["Views", "Iconic"] },
+            { "id": "washington_sq", "title": "Washington Square Park", "category": "Attraction", "region": "NYC", "lat": 40.7308, "lng": -73.9973, "cost": 0, "duration": 45, "tags": ["Park", "People Watching"] },
+            { "id": "coney_island", "title": "Coney Island", "category": "Attraction", "region": "NYC", "lat": 40.5749, "lng": -73.9780, "cost": 0, "duration": 180, "tags": ["Beach", "Amusement"] },
+            { "id": "jackson_heights", "title": "Jackson Heights (Little India)", "category": "Attraction", "region": "NYC", "lat": 40.7484, "lng": -73.8841, "cost": 0, "duration": 90, "tags": ["Culture", "Food"] },
+            { "id": "nyc_library_rooftop", "title": "NYC Public Library Rooftop", "category": "Attraction", "region": "NYC", "lat": 40.7532, "lng": -73.9822, "cost": 0, "duration": 45, "tags": ["Views", "Architecture"] },
+            { "id": "observatory_generic", "title": "Observatory (One World)", "category": "Attraction", "region": "NYC", "lat": 40.7130, "lng": -74.0131, "cost": 44, "duration": 90, "tags": ["Views", "Indoor"] },
+            { "id": "apple_store", "title": "Apple Store (5th Ave)", "category": "Attraction", "region": "NYC", "lat": 40.7635, "lng": -73.9723, "cost": 0, "duration": 30, "tags": ["Tech", "Architecture"] },
+            { "id": "mitr", "title": "Mitr Thai", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.9800, "cost": 40, "duration": 90, "tags": ["Thai", "Sit-down"] },
+            { "id": "panakon", "title": "Panakon", "category": "Food", "region": "NYC", "lat": 40.7585, "lng": -73.9850, "cost": 35, "duration": 90, "tags": ["Asian", "Casual"] },
+            { "id": "emily", "title": "Emily (Pizza)", "category": "Food", "region": "NYC", "lat": 40.6833, "lng": -73.9664, "cost": 30, "duration": 90, "tags": ["Pizza", "Burger"] },
+            { "id": "crepe_guru", "title": "Crepe Guru", "category": "Food", "region": "NJ", "lat": 40.7420, "lng": -74.0280, "cost": 15, "duration": 30, "tags": ["Dessert", "Quick"] },
+            { "id": "tswipe", "title": "T-Swirl Crepe", "category": "Food", "region": "NYC", "lat": 40.7150, "lng": -73.9950, "cost": 10, "duration": 30, "tags": ["Dessert", "Quick"] },
+            { "id": "molly_tea", "title": "Molly Tea", "category": "Food", "region": "NYC", "lat": 40.7600, "lng": -73.8300, "cost": 8, "duration": 20, "tags": ["Boba", "Drinks"] },
+            { "id": "hey_tea", "title": "Hey Tea", "category": "Food", "region": "NYC", "lat": 40.7530, "lng": -73.9850, "cost": 10, "duration": 20, "tags": ["Boba", "Drinks"] },
+            { "id": "baos_pastry", "title": "Bao's Pastry", "category": "Food", "region": "NYC", "lat": 40.7250, "lng": -74.0000, "cost": 15, "duration": 30, "tags": ["Bakery", "Snack"] },
+            { "id": "mixue", "title": "Mixue", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 5, "duration": 15, "tags": ["Dessert", "Drinks"] },
+            { "id": "im_donut", "title": "I'm Donut", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.9850, "cost": 10, "duration": 20, "tags": ["Dessert", "Snack"] },
+            { "id": "gopchang", "title": "Gopchang (Intestines BBQ)", "category": "Food", "region": "NJ", "lat": 40.8400, "lng": -73.9950, "cost": 50, "duration": 120, "tags": ["Korean", "Dinner"] },
+            { "id": "pocha_22", "title": "Pocha 22", "category": "Food", "region": "NYC", "lat": 40.7470, "lng": -73.9870, "cost": 40, "duration": 120, "tags": ["Korean", "Nightlife"] },
+            { "id": "k_bbq_nj", "title": "K BBQ NJ", "category": "Food", "region": "NJ", "lat": 40.8500, "lng": -73.9700, "cost": 45, "duration": 120, "tags": ["Korean", "Dinner"] },
+            { "id": "indian_food", "title": "Indian Food", "category": "Food", "region": "NYC", "lat": 40.7484, "lng": -73.8841, "cost": 30, "duration": 90, "tags": ["Indian", "Dinner"] },
+            { "id": "pho_banh", "title": "Pho (Banh)", "category": "Food", "region": "NYC", "lat": 40.7200, "lng": -74.0000, "cost": 20, "duration": 60, "tags": ["Vietnamese", "Lunch"] },
+            { "id": "steak_house", "title": "Steak House", "category": "Food", "region": "NYC", "lat": 40.7500, "lng": -73.9800, "cost": 100, "duration": 120, "tags": ["Fine Dining", "Dinner"] },
+            { "id": "chipotle", "title": "Chipotle", "category": "Food", "region": "NYC", "lat": 40.7500, "lng": -73.9900, "cost": 15, "duration": 30, "tags": ["Fast Food", "Quick"] },
+            { "id": "popeyes", "title": "American Fried Chicken", "category": "Food", "region": "NYC", "lat": 40.7500, "lng": -73.9900, "cost": 15, "duration": 30, "tags": ["Fast Food", "Quick"] },
+            { "id": "korean_ck", "title": "Korean Fried Chicken", "category": "Food", "region": "NYC", "lat": 40.7470, "lng": -73.9870, "cost": 25, "duration": 60, "tags": ["Korean", "Casual"] },
+            { "id": "congee_village", "title": "Congee Village", "category": "Food", "region": "NYC", "lat": 40.7180, "lng": -73.9900, "cost": 25, "duration": 90, "tags": ["Chinese", "Sit-down"] },
+            { "id": "house_of_joy", "title": "House of Joy", "category": "Food", "region": "NYC", "lat": 40.7150, "lng": -73.9970, "cost": 30, "duration": 90, "tags": ["Dim Sum", "Chinese"] },
+            { "id": "afghan_food", "title": "Afghan Food", "category": "Food", "region": "NYC", "lat": 40.7600, "lng": -73.9000, "cost": 30, "duration": 90, "tags": ["Afghan", "Dinner"] },
+            { "id": "wagyu_bbq", "title": "Wagyu BBQ", "category": "Food", "region": "NYC", "lat": 40.7470, "lng": -73.9870, "cost": 100, "duration": 120, "tags": ["Premium", "Dinner"] },
+            { "id": "china_baozi", "title": "China Underground Baozi", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 15, "duration": 45, "tags": ["Chinese", "Street Food"] },
+            { "id": "mei_lai_wah", "title": "Mei Lai Wah", "category": "Food", "region": "NYC", "lat": 40.7150, "lng": -73.9980, "cost": 10, "duration": 30, "tags": ["Bakery", "Pork Buns"] },
+            { "id": "cajun_food", "title": "Cajun Food", "category": "Food", "region": "NYC", "lat": 40.7500, "lng": -73.9900, "cost": 40, "duration": 90, "tags": ["Seafood", "Dinner"] },
+            { "id": "flushing_skewers", "title": "Skewers / Jianbing / Guokui", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 15, "duration": 45, "tags": ["Chinese", "Street Food"] },
+            { "id": "waffle_manhattan", "title": "Waffle in Manhattan", "category": "Food", "region": "NYC", "lat": 40.7500, "lng": -73.9850, "cost": 12, "duration": 30, "tags": ["Dessert", "Quick"] },
+            { "id": "ichiran", "title": "Ichiran Ramen", "category": "Food", "region": "NYC", "lat": 40.7500, "lng": -73.9850, "cost": 25, "duration": 60, "tags": ["Japanese", "Solo Dining"] },
+            { "id": "haidilao", "title": "Haidilao Hot Pot", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 50, "duration": 120, "tags": ["Hot Pot", "Dinner"] },
+            { "id": "xiaolongkan", "title": "Xiaolongkan Hot Pot", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 50, "duration": 120, "tags": ["Hot Pot", "Dinner"] },
+            { "id": "beijing_duck", "title": "Beijing Roast Duck", "category": "Food", "region": "NYC", "lat": 40.7150, "lng": -73.9970, "cost": 45, "duration": 90, "tags": ["Chinese", "Fine Dining"] },
+            { "id": "lebanese_arabic", "title": "Lebanese / Arabic Food", "category": "Food", "region": "NYC", "lat": 40.7650, "lng": -73.9100, "cost": 30, "duration": 90, "tags": ["Middle Eastern", "Dinner"] },
+            { "id": "uyghur", "title": "Uyghur Food", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 30, "duration": 90, "tags": ["Central Asian", "Dinner"] },
+            { "id": "dongbei", "title": "Dongbei Cuisine", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 30, "duration": 90, "tags": ["Chinese", "Hearty"] },
+            { "id": "halal_truck", "title": "Halal Street Food Truck", "category": "Food", "region": "NYC", "lat": 40.7610, "lng": -73.9790, "cost": 12, "duration": 20, "tags": ["Street Food", "Late Night"] }
+        ];
 
-  // --- MAP LOGIC ---
-  let map;
-  let markerGroup; // Holds our active pins so we can delete them easily
+        let map;
+        let markerGroup;
+        const STORAGE_KEY = 'nyc_trip_plan';
 
-  function initMap() {
-    // Start centered on NYC with a wide zoom
-    map = L.map('map').setView([40.7128, -74.0060], 11);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
-    
-    // Create an empty layer group for our pins
-    markerGroup = L.layerGroup().addTo(map);
-  }
+        // --- MAP LOGIC ---
+        function initMap() {
+            map = L.map('map').setView([40.7128, -74.0060], 11);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap © CARTO'
+            }).addTo(map);
+            markerGroup = L.layerGroup().addTo(map);
+        }
 
-  function renderMapForDay(listId, dayTitle) {
-    const listElement = document.getElementById(listId);
-    if (!listElement) return;
+        function renderMapForDay(listId, dayTitle) {
+            const listElement = document.getElementById(listId);
+            if (!listElement) return;
 
-    // Hide the initial instruction overlay
-    document.getElementById('map-overlay').style.opacity = '0';
+            document.getElementById('map-overlay').style.opacity = '0';
+            markerGroup.clearLayers();
 
-    // Clear old pins
-    markerGroup.clearLayers();
+            const cards = listElement.querySelectorAll('.kanban-card');
+            if (cards.length === 0) {
+                alert(`No activities planned for ${dayTitle} yet!`);
+                return;
+            }
 
-    const cards = listElement.querySelectorAll('.kanban-card');
-    if (cards.length === 0) {
-      alert(`No activities planned for ${dayTitle} yet!`);
-      return;
-    }
+            const bounds = [];
+            cards.forEach((card, index) => {
+                const lat = parseFloat(card.getAttribute('data-lat'));
+                const lng = parseFloat(card.getAttribute('data-lng'));
+                const title = card.getAttribute('data-title');
 
-    const bounds = []; // Array to hold GPS coordinates to calculate map zoom
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    const marker = L.marker([lat, lng]).bindPopup(`<b>Stop ${index + 1}:</b> ${title}`);
+                    markerGroup.addLayer(marker);
+                    bounds.push([lat, lng]);
+                }
+            });
 
-    // Loop through cards in that day
-    cards.forEach((card, index) => {
-      const lat = parseFloat(card.getAttribute('data-lat'));
-      const lng = parseFloat(card.getAttribute('data-lng'));
-      const title = card.getAttribute('data-title');
+            if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+        }
 
-      if (!isNaN(lat) && !isNaN(lng)) {
-        // Create pin with a popup showing order number and title
-        const marker = L.marker([lat, lng]).bindPopup(`<b>Stop ${index + 1}:</b> ${title}`);
-        markerGroup.addLayer(marker);
-        bounds.push([lat, lng]);
-      }
-    });
+        // --- UI & HTML GENERATION ---
+        function getCategoryClass(category) {
+            if (category === "Food") return "cat-food";
+            if (category === "Attraction") return "cat-attraction";
+            return "cat-activity";
+        }
 
-    // Automatically zoom and pan the map to fit all the pins perfectly
-    if (bounds.length > 0) {
-      map.fitBounds(bounds, { padding: [50, 50] });
-    }
-  }
-
-
-  // --- UI & KANBAN LOGIC ---
-  function getCategoryClass(category) {
-    if(category === "Food") return "cat-food";
-    if(category === "Attraction") return "cat-attraction";
-    return "cat-activity";
-  }
-
-  function createCardHTML(item) {
-    return `
-      <div class="kanban-card ${getCategoryClass(item.category)}" data-lat="${item.lat}" data-lng="${item.lng}" data-title="${item.title}" data-cost="${item.cost}" data-duration="${item.duration}">
+        function createCardHTML(item) {
+            return `
+      <div class="kanban-card ${getCategoryClass(item.category)}" data-id="${item.id}" data-category="${item.category}" data-lat="${item.lat}" data-lng="${item.lng}" data-title="${item.title}" data-cost="${item.cost}" data-duration="${item.duration}" data-tags="${item.tags.join(',')}">
+        <button class="delete-btn" onclick="deleteCard(this)" title="Remove item">✖</button>
         <div class="card-title">${item.title}</div>
         <div class="card-meta">
           <span>⏱️ ${item.duration}m</span>
@@ -251,88 +578,330 @@
         <span class="card-tag">${item.tags[0]}</span>
       </div>
     `;
-  }
+        }
 
-  function updateColumnStats(listElement) {
-    if (listElement.id === 'backlog-list') return; 
+        function updateColumnStats(listElement) {
+            if (listElement.id === 'backlog-list') return;
 
-    const dayNumber = listElement.id.split('-')[1]; 
-    const statsElement = document.getElementById(`stats-day-${dayNumber}`);
-    if (!statsElement) return;
+            const dayNumber = listElement.id.split('-')[1];
+            const statsElement = document.getElementById(`stats-day-${dayNumber}`);
+            if (!statsElement) return;
 
-    let totalCost = 0;
-    let totalDuration = 0;
+            let totalCost = 0;
+            let totalDuration = 0;
 
-    const cards = listElement.querySelectorAll('.kanban-card');
-    cards.forEach(card => {
-      totalCost += parseInt(card.getAttribute('data-cost'), 10) || 0;
-      totalDuration += parseInt(card.getAttribute('data-duration'), 10) || 0;
-    });
+            const cards = listElement.querySelectorAll('.kanban-card');
+            cards.forEach(card => {
+                totalCost += parseInt(card.getAttribute('data-cost'), 10) || 0;
+                totalDuration += parseInt(card.getAttribute('data-duration'), 10) || 0;
+            });
 
-    const hours = Math.floor(totalDuration / 60);
-    const minutes = totalDuration % 60;
-    const timeString = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+            const hours = Math.floor(totalDuration / 60);
+            const minutes = totalDuration % 60;
+            const timeString = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 
-    statsElement.innerText = `$${totalCost} | ${timeString}`;
+            statsElement.innerText = `$${totalCost} | ${timeString}`;
 
-    if (totalDuration > 480 || totalCost > 200) {
-      statsElement.style.color = '#e53935'; 
-      statsElement.style.fontWeight = 'bold';
-    } else {
-      statsElement.style.color = 'var(--text-light)';
-      statsElement.style.fontWeight = 'normal';
-    }
-  }
+            if (totalDuration > 480 || totalCost > 200) {
+                statsElement.style.color = '#e53935';
+                statsElement.style.fontWeight = 'bold';
+            } else {
+                statsElement.style.color = 'var(--text-light)';
+                statsElement.style.fontWeight = 'normal';
+            }
+        }
 
-  function initializeApp() {
-    // 1. Boot up the map
-    initMap();
+        // --- STATE MANAGEMENT (LOCALSTORAGE) ---
+        function saveBoardState() {
+            const state = {};
+            const allLists = document.querySelectorAll('.card-list');
 
-    // 2. Load the backlog
-    const backlogContainer = document.getElementById('backlog-list');
-    masterData.forEach(item => {
-      backlogContainer.innerHTML += createCardHTML(item);
-    });
+            allLists.forEach(list => {
+                const cards = list.querySelectorAll('.kanban-card');
+                const listData = [];
 
-    // 3. Generate Day Columns
-    const board = document.getElementById('kanban-board');
-    const daysOfWeek = ["May 4", "May 5", "May 6", "May 7", "May 8", "May 9", "May 10"];
-    
-    for(let i = 0; i < 7; i++) {
-      const listId = `day-${i+1}-list`;
-      const dayColumn = `
+                cards.forEach(card => {
+                    listData.push({
+                        id: card.getAttribute('data-id'),
+                        title: card.getAttribute('data-title'),
+                        category: card.getAttribute('data-category'),
+                        lat: parseFloat(card.getAttribute('data-lat')),
+                        lng: parseFloat(card.getAttribute('data-lng')),
+                        cost: parseInt(card.getAttribute('data-cost')),
+                        duration: parseInt(card.getAttribute('data-duration')),
+                        tags: card.getAttribute('data-tags').split(',')
+                    });
+                });
+
+                state[list.id] = listData;
+            });
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function loadBoardState() {
+            const savedData = localStorage.getItem(STORAGE_KEY);
+
+            if (savedData) {
+                // Load from LocalStorage
+                const state = JSON.parse(savedData);
+                for (const [listId, items] of Object.entries(state)) {
+                    const container = document.getElementById(listId);
+                    if (container) {
+                        items.forEach(item => container.innerHTML += createCardHTML(item));
+                    }
+                }
+            } else {
+                // First time visit: Load Default Master Data into Backlog
+                const backlogContainer = document.getElementById('backlog-list');
+                masterData.forEach(item => backlogContainer.innerHTML += createCardHTML(item));
+            }
+
+            // Force math calculations on load
+            document.querySelectorAll('.card-list').forEach(updateColumnStats);
+        }
+
+        // --- ADD / DELETE LOGIC ---
+        function deleteCard(buttonElement) {
+            if (confirm("Remove this item from the planner?")) {
+                const card = buttonElement.closest('.kanban-card');
+                const parentList = card.parentElement;
+                card.remove();
+                updateColumnStats(parentList);
+                saveBoardState(); // Auto-save after delete
+            }
+        }
+
+        // --- NEW MODAL ADD / SEARCH LOGIC ---
+        function openSearchModal() {
+            document.getElementById('search-modal').style.display = 'flex';
+            document.getElementById('place-search-input').value = '';
+            document.getElementById('search-results').style.display = 'none';
+            document.getElementById('place-search-input').focus();
+        }
+
+        function closeSearchModal() {
+            document.getElementById('search-modal').style.display = 'none';
+        }
+
+        async function executeSearch() {
+            const query = document.getElementById('place-search-input').value.trim();
+            if (!query) return;
+
+            const listElement = document.getElementById('search-results');
+            const loadingElement = document.getElementById('search-loading');
+
+            listElement.style.display = 'none';
+            loadingElement.style.display = 'block';
+
+            try {
+                // Fetch up to 5 results instead of 1
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
+                const data = await response.json();
+
+                loadingElement.style.display = 'none';
+
+                if (data.length === 0) {
+                    alert("No results found. Try adding a city name (e.g., 'NYC').");
+                    return;
+                }
+
+                // Clear the old list and build the new one
+                listElement.innerHTML = '';
+                data.forEach((location) => {
+                    const li = document.createElement('li');
+                    li.className = 'search-result-item';
+                    // Nominatim returns a detailed display_name
+                    li.innerText = location.display_name;
+
+                    // When clicked, pass this specific location object to the finalizer
+                    li.onclick = () => finalizeCustomItem(location);
+
+                    listElement.appendChild(li);
+                });
+
+                listElement.style.display = 'block';
+
+            } catch (error) {
+                loadingElement.style.display = 'none';
+                alert("Error connecting to map server.");
+            }
+        }
+
+        function finalizeCustomItem(location) {
+            // 1. Close the modal
+            closeSearchModal();
+
+            // 2. Extract a clean title (Nominatim strings are very long, grab the first part)
+            const shortName = location.name || location.display_name.split(',')[0];
+
+            // 3. Prompt for the remaining itinerary data
+            const title = prompt("Confirm Name:", shortName) || shortName;
+            const cost = prompt("Estimated Cost ($):", "0") || "0";
+            const duration = prompt("Estimated Time (Minutes):", "60") || "60";
+            const tag = prompt("Short Tag (e.g., Food, Park, Views):", "Custom") || "Custom";
+
+            // 4. Build the card with the specific coordinates you clicked
+            const newItem = {
+                id: 'custom_' + Date.now(),
+                title: title,
+                category: "Activity",
+                lat: parseFloat(location.lat),
+                lng: parseFloat(location.lon),
+                cost: parseInt(cost),
+                duration: parseInt(duration),
+                tags: [tag]
+            };
+
+            // 5. Inject into Master List and Save
+            const backlog = document.getElementById('backlog-list');
+            backlog.insertAdjacentHTML('afterbegin', createCardHTML(newItem));
+            saveBoardState();
+        }
+
+        function parseCoordinates(input) {
+            if (!input) return { lat: NaN, lng: NaN };
+
+            const cleanInput = input.trim();
+
+            // Pattern 1: Standard Decimal (e.g., "40.7128, -74.0060")
+            if (/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(cleanInput)) {
+                const parts = cleanInput.split(',');
+                return { lat: parseFloat(parts[0]), lng: parseFloat(parts[1]) };
+            }
+
+            // Pattern 2: The "Lazy" DMS Format 
+            // FIX: Changed [^\\d]* to [^\\dNSEW]* so it doesn't accidentally eat the directional letters
+            const dmsRegex = /^(-?\d+)[^\d]+(\d+)[^\d]+([\d.]+)[^\dNSEW]*([NS])?\s*[,;]?\s*(-?\d+)[^\d]+(\d+)[^\d]+([\d.]+)[^\dNSEW]*([EW])?$/i;
+            const match = cleanInput.match(dmsRegex);
+
+            if (match) {
+                // Calculate Latitude 
+                let lat = Math.abs(parseInt(match[1], 10)) + parseInt(match[2], 10) / 60 + parseFloat(match[3]) / 3600;
+                if (match[1].startsWith('-') || (match[4] && match[4].toUpperCase() === 'S')) lat = -lat;
+
+                // Calculate Longitude
+                let lng = Math.abs(parseInt(match[5], 10)) + parseInt(match[6], 10) / 60 + parseFloat(match[7]) / 3600;
+                if (match[5].startsWith('-') || (match[8] && match[8].toUpperCase() === 'W')) lng = -lng;
+
+                return { lat: lat, lng: lng };
+            }
+
+            return { lat: NaN, lng: NaN };
+        }
+
+        function addManualItem() {
+            closeSearchModal();
+
+            const title = prompt("Name of the place:") || "Custom Location";
+            const cost = prompt("Estimated Cost ($):", "0") || "0";
+            const duration = prompt("Estimated Time (Minutes):", "60") || "60";
+            const tag = prompt("Short Tag (e.g., Food, Park, Views):", "Custom") || "Custom";
+
+            // Ask for coordinates (now accepts both formats!)
+            const manualCoords = prompt("Optional: Paste coordinates (e.g., 40.7128, -74.0060 OR 40°44'34.8\"N 74°10'06.2\"W) or leave blank:");
+
+            // Run it through our new mathematical parser
+            const { lat, lng } = parseCoordinates(manualCoords);
+
+            const newItem = {
+                id: 'custom_manual_' + Date.now(),
+                title: title,
+                category: "Activity",
+                lat: lat,
+                lng: lng,
+                cost: parseInt(cost) || 0,
+                duration: parseInt(duration) || 0,
+                tags: [tag]
+            };
+
+            const backlog = document.getElementById('backlog-list');
+            backlog.insertAdjacentHTML('afterbegin', createCardHTML(newItem));
+            saveBoardState();
+        }
+
+        // --- EXPORT / IMPORT LOGIC ---
+        function exportPlan() {
+            const data = localStorage.getItem(STORAGE_KEY);
+            if (!data) return alert("Nothing to export yet! Move some cards first.");
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(data).then(() => {
+                alert("✅ Itinerary data copied to your clipboard! Text or email this string to your friend.");
+            }).catch(err => {
+                // Fallback for older browsers
+                prompt("Copy this text string to share your plan:", data);
+            });
+        }
+
+        function importPlan() {
+            const data = prompt("Paste the itinerary text string here:");
+            if (!data) return;
+
+            try {
+                JSON.parse(data); // Validate it's actual JSON
+                localStorage.setItem(STORAGE_KEY, data);
+                alert("✅ Plan successfully imported! The page will now reload.");
+                location.reload();
+            } catch (e) {
+                alert("❌ Error: Invalid data string. Make sure you copied the whole thing.");
+            }
+        }
+
+        function clearPlan() {
+            if (confirm("Are you sure you want to completely reset the board back to the default list? This cannot be undone!")) {
+                localStorage.removeItem(STORAGE_KEY);
+                location.reload();
+            }
+        }
+
+        // --- INITIALIZATION ---
+        function initializeApp() {
+            initMap();
+
+            // Generate Day Columns FIRST so we have containers to load data into
+            const board = document.getElementById('kanban-board');
+            const daysOfWeek = ["May 4", "May 5", "May 6", "May 7", "May 8", "May 9", "May 10"];
+
+            for (let i = 0; i < 7; i++) {
+                const listId = `day-${i + 1}-list`;
+                const dayColumn = `
         <div class="column-wrapper">
           <div class="column-header">
             <div class="header-top">
-              <span>📅 Day ${i+1}</span>
-              <button class="map-btn" onclick="renderMapForDay('${listId}', 'Day ${i+1}')">🗺️ View Route</button>
+              <span>📅 Day ${i + 1}</span>
+              <button class="map-btn" onclick="renderMapForDay('${listId}', 'Day ${i + 1}')">🗺️ View Route</button>
             </div>
             <div style="font-size: 12px; margin-bottom: 5px;">${daysOfWeek[i]}</div>
-            <div class="column-stats" id="stats-day-${i+1}">$0 | 0m</div>
+            <div class="column-stats" id="stats-day-${i + 1}">$0 | 0m</div>
           </div>
           <div class="card-list" id="${listId}"></div>
         </div>
       `;
-      board.innerHTML += dayColumn;
-    }
+                board.innerHTML += dayColumn;
+            }
 
-    // 4. Activate Drag and Drop
-    const allLists = document.querySelectorAll('.card-list');
-    allLists.forEach(list => {
-      new Sortable(list, {
-        group: 'shared',
-        animation: 150,
-        ghostClass: 'kanban-card-ghost',
-        onEnd: function (evt) {
-          updateColumnStats(evt.from);
-          updateColumnStats(evt.to);
+            // Load data from LocalStorage or Default Array
+            loadBoardState();
+
+            // Activate SortableJS
+            const allLists = document.querySelectorAll('.card-list');
+            allLists.forEach(list => {
+                new Sortable(list, {
+                    group: 'shared',
+                    animation: 150,
+                    ghostClass: 'kanban-card-ghost',
+                    onEnd: function (evt) {
+                        updateColumnStats(evt.from);
+                        updateColumnStats(evt.to);
+                        saveBoardState(); // Auto-save every time a card is dropped
+                    }
+                });
+            });
         }
-      });
-    });
-  }
 
-  // Boot up!
-  initializeApp();
-</script>
+        initializeApp();
+    </script>
 </body>
+
 </html>
