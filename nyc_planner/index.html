@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NYC Dynamic Itinerary Builder</title>
+    <title>Dynamic Trip Planner</title>
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -50,10 +50,10 @@
             font-weight: bold;
         }
 
-        /* NEW: Control Panel Buttons */
         .controls {
             display: flex;
             gap: 8px;
+            flex-wrap: wrap;
         }
 
         .btn {
@@ -79,6 +79,15 @@
 
         .btn-add:hover {
             background: #61bd4f;
+        }
+
+        .btn-day {
+            background: #ff9f1a;
+            border-color: #ff9f1a;
+        }
+
+        .btn-day:hover {
+            background: #e28912;
         }
 
         .app-container {
@@ -135,6 +144,7 @@
             display: flex;
             flex-direction: column;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            position: relative;
         }
 
         .column-header {
@@ -155,6 +165,19 @@
             font-size: 12px;
             color: var(--text-light);
             font-weight: normal;
+        }
+
+        .delete-col-btn {
+            background: none;
+            border: none;
+            color: #a5adba;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 5px;
+        }
+
+        .delete-col-btn:hover {
+            color: #eb5a46;
         }
 
         .map-btn {
@@ -194,7 +217,6 @@
             cursor: grabbing;
         }
 
-        /* NEW: Delete Button */
         .delete-btn {
             position: absolute;
             top: 8px;
@@ -249,7 +271,6 @@
             margin-top: 6px;
         }
 
-        /* Search Modal Styles */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -337,10 +358,6 @@
             transition: background 0.2s;
         }
 
-        .search-result-item:last-child {
-            border-bottom: none;
-        }
-
         .search-result-item:hover {
             background: #e3e9f0;
         }
@@ -373,6 +390,18 @@
 </head>
 
 <body>
+    <div class="modal-overlay" id="setup-modal">
+        <div class="modal-content" style="text-align: center; align-items: center;">
+            <h2 style="margin-top: 0;">Welcome to your Trip Planner</h2>
+            <p style="color: #5e6c84; font-size: 14px; margin-bottom: 20px;">To get started, select the first day of
+                your trip. We will automatically generate a 7-day board for you.</p>
+            <input type="date" id="start-date-picker"
+                style="padding: 10px; border: 2px solid #dfe1e6; border-radius: 4px; font-size: 16px; width: 80%; margin-bottom: 20px;">
+            <button class="btn btn-add" onclick="initializeDefaultBoard()"
+                style="width: 100%; padding: 12px; font-size: 16px;">Create My Itinerary</button>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="search-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -391,17 +420,18 @@
                 Can't find it? <a href="#" onclick="addManualItem(); return false;"
                     style="color: #0079bf; text-decoration: underline; font-weight: bold;">Add it manually</a>
             </div>
-
         </div>
     </div>
+
     <header>
         <div>
-            <div class="header-title">NYC Trip Planner</div>
-            <div style="font-size: 12px; font-weight: normal; opacity: 0.8;">Auto-saves to your device. Export to share
-                with friends!</div>
+            <div class="header-title">Dynamic Trip Planner</div>
+            <div style="font-size: 12px; font-weight: normal; opacity: 0.8;">Auto-saves to your device. Export to share!
+            </div>
         </div>
         <div class="controls">
             <button class="btn btn-add" onclick="openSearchModal()">+ Add Place</button>
+            <button class="btn btn-day" onclick="addNewDayColumn()">📅 Add Day</button>
             <button class="btn" onclick="exportPlan()">📤 Export</button>
             <button class="btn" onclick="importPlan()">📥 Import</button>
             <button class="btn" onclick="clearPlan()" style="background:#eb5a46; border-color:#eb5a46;">Reset</button>
@@ -415,17 +445,33 @@
         </div>
 
         <div class="kanban-panel" id="kanban-board">
-            <div class="column-wrapper" style="background: #e1e4e8; border: 1px solid #ccc;">
-                <div class="column-header">
-                    <div class="header-top">🗂️ Master List</div>
+            <div class="column-wrapper" id="col-backlog-food" style="background: #fff9e6; border: 1px solid #ffd54f;">
+                <div class="column-header" style="border-bottom-color: #ffd54f;">
+                    <div class="header-top">🍔 Food & Dining</div>
                 </div>
-                <div class="card-list" id="backlog-list"></div>
+                <div class="card-list" id="backlog-food"></div>
             </div>
+
+            <div class="column-wrapper" id="col-backlog-attraction"
+                style="background: #fff3e0; border: 1px solid #ffb74d;">
+                <div class="column-header" style="border-bottom-color: #ffb74d;">
+                    <div class="header-top">📸 Sights & Landmarks</div>
+                </div>
+                <div class="card-list" id="backlog-attraction"></div>
+            </div>
+
+            <div class="column-wrapper" id="col-backlog-activity"
+                style="background: #ffebee; border: 1px solid #e57373;">
+                <div class="column-header" style="border-bottom-color: #e57373;">
+                    <div class="header-top">🎢 Activities & Fun</div>
+                </div>
+                <div class="card-list" id="backlog-activity"></div>
+            </div>
+
         </div>
     </div>
 
     <script>
-        // --- DEFAULT DATA (Used only if LocalStorage is empty) ---
         const masterData = [
             { "id": "broadway", "title": "Broadway Show", "category": "Activity", "region": "NYC", "lat": 40.7590, "lng": -73.9845, "cost": 150, "duration": 180, "tags": ["Theater", "Indoor"] },
             { "id": "shooting_range", "title": "Shooting Range", "category": "Activity", "region": "NJ", "lat": 40.8906, "lng": -74.1920, "cost": 80, "duration": 120, "tags": ["Action", "Indoor"] },
@@ -514,393 +560,348 @@
             { "id": "uyghur", "title": "Uyghur Food", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 30, "duration": 90, "tags": ["Central Asian", "Dinner"] },
             { "id": "dongbei", "title": "Dongbei Cuisine", "category": "Food", "region": "NYC", "lat": 40.7580, "lng": -73.8320, "cost": 30, "duration": 90, "tags": ["Chinese", "Hearty"] },
             { "id": "halal_truck", "title": "Halal Street Food Truck", "category": "Food", "region": "NYC", "lat": 40.7610, "lng": -73.9790, "cost": 12, "duration": 20, "tags": ["Street Food", "Late Night"] }
-        ];
+        ]
+
+
+            ;
 
         let map;
         let markerGroup;
-        const STORAGE_KEY = 'nyc_trip_plan';
+        const STORAGE_KEY = 'nyc_trip_plan_v4';
 
-        // --- MAP LOGIC ---
         function initMap() {
             map = L.map('map').setView([40.7128, -74.0060], 11);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap © CARTO'
-            }).addTo(map);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '© OpenStreetMap © CARTO' }).addTo(map);
             markerGroup = L.layerGroup().addTo(map);
         }
 
         function renderMapForDay(listId, dayTitle) {
             const listElement = document.getElementById(listId);
             if (!listElement) return;
-
             document.getElementById('map-overlay').style.opacity = '0';
             markerGroup.clearLayers();
-
             const cards = listElement.querySelectorAll('.kanban-card');
-            if (cards.length === 0) {
-                alert(`No activities planned for ${dayTitle} yet!`);
-                return;
-            }
-
+            if (cards.length === 0) { alert(`No activities planned for ${dayTitle} yet!`); return; }
             const bounds = [];
             cards.forEach((card, index) => {
                 const lat = parseFloat(card.getAttribute('data-lat'));
                 const lng = parseFloat(card.getAttribute('data-lng'));
                 const title = card.getAttribute('data-title');
-
                 if (!isNaN(lat) && !isNaN(lng)) {
                     const marker = L.marker([lat, lng]).bindPopup(`<b>Stop ${index + 1}:</b> ${title}`);
                     markerGroup.addLayer(marker);
                     bounds.push([lat, lng]);
                 }
             });
-
             if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
         }
 
-        // --- UI & HTML GENERATION ---
         function getCategoryClass(category) {
             if (category === "Food") return "cat-food";
             if (category === "Attraction") return "cat-attraction";
             return "cat-activity";
         }
 
+        // --- NEW ROUTING HELPER ---
+        // Decides which column ID a card belongs to based on its category
+        function getTargetBacklogId(category) {
+            if (category === "Food") return "backlog-food";
+            if (category === "Attraction") return "backlog-attraction";
+            return "backlog-activity";
+        }
+
         function createCardHTML(item) {
             return `
-      <div class="kanban-card ${getCategoryClass(item.category)}" data-id="${item.id}" data-category="${item.category}" data-lat="${item.lat}" data-lng="${item.lng}" data-title="${item.title}" data-cost="${item.cost}" data-duration="${item.duration}" data-tags="${item.tags.join(',')}">
-        <button class="delete-btn" onclick="deleteCard(this)" title="Remove item">✖</button>
-        <div class="card-title">${item.title}</div>
-        <div class="card-meta">
-          <span>⏱️ ${item.duration}m</span>
-          <span>💵 $${item.cost}</span>
-        </div>
-        <span class="card-tag">${item.tags[0]}</span>
-      </div>
-    `;
+            <div class="kanban-card ${getCategoryClass(item.category)}" data-id="${item.id}" data-category="${item.category}" data-lat="${item.lat}" data-lng="${item.lng}" data-title="${item.title}" data-cost="${item.cost}" data-duration="${item.duration}" data-tags="${item.tags.join(',')}">
+                <button class="delete-btn" onclick="deleteCard(this)" title="Remove item">✖</button>
+                <div class="card-title">${item.title}</div>
+                <div class="card-meta">
+                <span>⏱️ ${item.duration}m</span>
+                <span>💵 $${item.cost}</span>
+                </div>
+                <span class="card-tag">${item.tags[0]}</span>
+            </div>`;
+        }
+
+        function createColumnHTML(listId, title, dateLabel) {
+            return `
+            <div class="column-wrapper" id="col-${listId}">
+                <div class="column-header">
+                    <div class="header-top">
+                        <span class="col-title" data-title="${title}">${title}</span>
+                        <div>
+                            <button class="map-btn" onclick="renderMapForDay('${listId}', '${title}')">🗺️ Route</button>
+                            <button class="delete-col-btn" onclick="deleteDayColumn('${listId}')" title="Delete Day">✖</button>
+                        </div>
+                    </div>
+                    <div style="font-size: 12px; margin-bottom: 5px;" class="col-date" data-date="${dateLabel}">${dateLabel}</div>
+                    <div class="column-stats" id="stats-${listId}">$0 | 0m</div>
+                </div>
+                <div class="card-list" id="${listId}"></div>
+            </div>`;
         }
 
         function updateColumnStats(listElement) {
-            if (listElement.id === 'backlog-list') return;
+            // Skip the math calculations if the column is one of our backlogs
+            if (listElement.id.startsWith('backlog-')) return;
 
-            const dayNumber = listElement.id.split('-')[1];
-            const statsElement = document.getElementById(`stats-day-${dayNumber}`);
+            const statsElement = document.getElementById(`stats-${listElement.id}`);
             if (!statsElement) return;
-
             let totalCost = 0;
             let totalDuration = 0;
-
-            const cards = listElement.querySelectorAll('.kanban-card');
-            cards.forEach(card => {
+            listElement.querySelectorAll('.kanban-card').forEach(card => {
                 totalCost += parseInt(card.getAttribute('data-cost'), 10) || 0;
                 totalDuration += parseInt(card.getAttribute('data-duration'), 10) || 0;
             });
-
             const hours = Math.floor(totalDuration / 60);
             const minutes = totalDuration % 60;
             const timeString = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-
             statsElement.innerText = `$${totalCost} | ${timeString}`;
+            statsElement.style.color = (totalDuration > 480 || totalCost > 200) ? '#e53935' : 'var(--text-light)';
+            statsElement.style.fontWeight = (totalDuration > 480 || totalCost > 200) ? 'bold' : 'normal';
+        }
 
-            if (totalDuration > 480 || totalCost > 200) {
-                statsElement.style.color = '#e53935';
-                statsElement.style.fontWeight = 'bold';
-            } else {
-                statsElement.style.color = 'var(--text-light)';
-                statsElement.style.fontWeight = 'normal';
+        function bindSortable(listElement) {
+            new Sortable(listElement, {
+                group: 'shared', animation: 150, ghostClass: 'kanban-card-ghost',
+                onEnd: function (evt) { updateColumnStats(evt.from); updateColumnStats(evt.to); saveBoardState(); }
+            });
+        }
+
+        function getFormattedDate(dateString, offsetDays) {
+            if (!dateString) return "Anytime";
+            const date = new Date(dateString + 'T12:00:00');
+            date.setDate(date.getDate() + offsetDays);
+            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        }
+
+        function addNewDayColumn() {
+            const title = prompt("Name this day (e.g., 'Day 8' or 'Extra Day'):", "New Day");
+            if (!title) return;
+            const dateStr = prompt("Enter a date (e.g., May 11):", "");
+
+            const uniqueId = `day-${Date.now()}-list`;
+            document.getElementById('kanban-board').insertAdjacentHTML('beforeend', createColumnHTML(uniqueId, title, dateStr || "Anytime"));
+            bindSortable(document.getElementById(uniqueId));
+            saveBoardState();
+        }
+
+        function deleteDayColumn(listId) {
+            if (confirm("Delete this day? All scheduled activities will be safely sorted back into your Master Lists.")) {
+                const list = document.getElementById(listId);
+
+                // Smart Rescue: Route cards back to their specific category backlogs
+                while (list.firstChild) {
+                    const card = list.firstChild;
+                    const cat = card.getAttribute('data-category');
+                    document.getElementById(getTargetBacklogId(cat)).appendChild(card);
+                }
+
+                document.getElementById(`col-${listId}`).remove();
+                saveBoardState();
             }
         }
 
-        // --- STATE MANAGEMENT (LOCALSTORAGE) ---
         function saveBoardState() {
-            const state = {};
-            const allLists = document.querySelectorAll('.card-list');
-
-            allLists.forEach(list => {
-                const cards = list.querySelectorAll('.kanban-card');
+            const state = { columns: [], lists: {} };
+            document.querySelectorAll('.card-list').forEach(list => {
+                const listId = list.id;
+                // Only save column configs for the dynamic days, not the backlogs
+                if (!listId.startsWith('backlog-')) {
+                    const colWrapper = document.getElementById(`col-${listId}`);
+                    state.columns.push({
+                        id: listId,
+                        title: colWrapper.querySelector('.col-title').getAttribute('data-title'),
+                        dateLabel: colWrapper.querySelector('.col-date').getAttribute('data-date')
+                    });
+                }
                 const listData = [];
-
-                cards.forEach(card => {
+                list.querySelectorAll('.kanban-card').forEach(card => {
                     listData.push({
-                        id: card.getAttribute('data-id'),
-                        title: card.getAttribute('data-title'),
-                        category: card.getAttribute('data-category'),
-                        lat: parseFloat(card.getAttribute('data-lat')),
-                        lng: parseFloat(card.getAttribute('data-lng')),
-                        cost: parseInt(card.getAttribute('data-cost')),
-                        duration: parseInt(card.getAttribute('data-duration')),
+                        id: card.getAttribute('data-id'), title: card.getAttribute('data-title'), category: card.getAttribute('data-category'),
+                        lat: parseFloat(card.getAttribute('data-lat')), lng: parseFloat(card.getAttribute('data-lng')),
+                        cost: parseInt(card.getAttribute('data-cost')), duration: parseInt(card.getAttribute('data-duration')),
                         tags: card.getAttribute('data-tags').split(',')
                     });
                 });
-
-                state[list.id] = listData;
+                state.lists[listId] = listData;
             });
-
             localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
         }
 
+        function initializeDefaultBoard() {
+            const startDate = document.getElementById('start-date-picker').value;
+            document.getElementById('setup-modal').style.display = 'none';
+
+            const board = document.getElementById('kanban-board');
+            for (let i = 0; i < 7; i++) {
+                const uniqueId = `day-${i + 1}-list`;
+                const dateLabel = startDate ? getFormattedDate(startDate, i) : `Day ${i + 1}`;
+                board.insertAdjacentHTML('beforeend', createColumnHTML(uniqueId, `Day ${i + 1}`, dateLabel));
+            }
+
+            // Route default master data into correct columns
+            masterData.forEach(item => {
+                document.getElementById(getTargetBacklogId(item.category)).insertAdjacentHTML('beforeend', createCardHTML(item));
+            });
+
+            document.querySelectorAll('.card-list').forEach(list => {
+                updateColumnStats(list);
+                bindSortable(list);
+            });
+            saveBoardState();
+        }
+
         function loadBoardState() {
+            // --- DYNAMIC DATA HYGIENE ---
+            const PREFIX = 'nyc_trip_plan'; // The shared root of all your versions
+
+            // Object.keys(localStorage) gives us an array of every key currently stored
+            Object.keys(localStorage).forEach(key => {
+                // If the key belongs to this app but ISN'T the one we are currently using...
+                if (key.startsWith(PREFIX) && key !== STORAGE_KEY) {
+                    console.log(`System: Purging legacy data [${key}] to save space.`);
+                    localStorage.removeItem(key);
+                }
+            });
             const savedData = localStorage.getItem(STORAGE_KEY);
+            const board = document.getElementById('kanban-board');
 
             if (savedData) {
-                // Load from LocalStorage
                 const state = JSON.parse(savedData);
-                for (const [listId, items] of Object.entries(state)) {
+                state.columns.forEach(col => board.insertAdjacentHTML('beforeend', createColumnHTML(col.id, col.title, col.dateLabel)));
+                for (const [listId, items] of Object.entries(state.lists)) {
                     const container = document.getElementById(listId);
-                    if (container) {
-                        items.forEach(item => container.innerHTML += createCardHTML(item));
-                    }
+                    if (container) items.forEach(item => container.innerHTML += createCardHTML(item));
                 }
+                document.querySelectorAll('.card-list').forEach(list => {
+                    updateColumnStats(list);
+                    bindSortable(list);
+                });
             } else {
-                // First time visit: Load Default Master Data into Backlog
-                const backlogContainer = document.getElementById('backlog-list');
-                masterData.forEach(item => backlogContainer.innerHTML += createCardHTML(item));
+                document.getElementById('setup-modal').style.display = 'flex';
+                document.getElementById('start-date-picker').valueAsDate = new Date();
             }
-
-            // Force math calculations on load
-            document.querySelectorAll('.card-list').forEach(updateColumnStats);
         }
 
-        // --- ADD / DELETE LOGIC ---
         function deleteCard(buttonElement) {
-            if (confirm("Remove this item from the planner?")) {
+            if (confirm("Remove this item entirely from the planner?")) {
                 const card = buttonElement.closest('.kanban-card');
                 const parentList = card.parentElement;
-                card.remove();
-                updateColumnStats(parentList);
-                saveBoardState(); // Auto-save after delete
+                card.remove(); updateColumnStats(parentList); saveBoardState();
             }
         }
 
-        // --- NEW MODAL ADD / SEARCH LOGIC ---
-        function openSearchModal() {
-            document.getElementById('search-modal').style.display = 'flex';
-            document.getElementById('place-search-input').value = '';
-            document.getElementById('search-results').style.display = 'none';
-            document.getElementById('place-search-input').focus();
-        }
-
-        function closeSearchModal() {
-            document.getElementById('search-modal').style.display = 'none';
-        }
+        function openSearchModal() { document.getElementById('search-modal').style.display = 'flex'; document.getElementById('place-search-input').value = ''; document.getElementById('search-results').style.display = 'none'; document.getElementById('place-search-input').focus(); }
+        function closeSearchModal() { document.getElementById('search-modal').style.display = 'none'; }
 
         async function executeSearch() {
             const query = document.getElementById('place-search-input').value.trim();
             if (!query) return;
-
-            const listElement = document.getElementById('search-results');
-            const loadingElement = document.getElementById('search-loading');
-
-            listElement.style.display = 'none';
-            loadingElement.style.display = 'block';
+            document.getElementById('search-results').style.display = 'none';
+            document.getElementById('search-loading').style.display = 'block';
 
             try {
-                // Fetch up to 5 results instead of 1
                 const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`);
                 const data = await response.json();
-
-                loadingElement.style.display = 'none';
-
-                if (data.length === 0) {
-                    alert("No results found. Try adding a city name (e.g., 'NYC').");
-                    return;
-                }
-
-                // Clear the old list and build the new one
+                document.getElementById('search-loading').style.display = 'none';
+                if (data.length === 0) { alert("No results found. Try adding a city name (e.g., 'NYC')."); return; }
+                const listElement = document.getElementById('search-results');
                 listElement.innerHTML = '';
                 data.forEach((location) => {
-                    const li = document.createElement('li');
-                    li.className = 'search-result-item';
-                    // Nominatim returns a detailed display_name
-                    li.innerText = location.display_name;
-
-                    // When clicked, pass this specific location object to the finalizer
-                    li.onclick = () => finalizeCustomItem(location);
-
-                    listElement.appendChild(li);
+                    const li = document.createElement('li'); li.className = 'search-result-item'; li.innerText = location.display_name;
+                    li.onclick = () => finalizeCustomItem(location); listElement.appendChild(li);
                 });
-
                 listElement.style.display = 'block';
-
-            } catch (error) {
-                loadingElement.style.display = 'none';
-                alert("Error connecting to map server.");
-            }
+            } catch (error) { document.getElementById('search-loading').style.display = 'none'; alert("Error connecting to map server."); }
         }
 
         function finalizeCustomItem(location) {
-            // 1. Close the modal
             closeSearchModal();
-
-            // 2. Extract a clean title (Nominatim strings are very long, grab the first part)
             const shortName = location.name || location.display_name.split(',')[0];
-
-            // 3. Prompt for the remaining itinerary data
             const title = prompt("Confirm Name:", shortName) || shortName;
+
+            // Ask for category to drop it in the right column
+            let categoryInput = prompt("Category (Food, Attraction, Activity):", "Activity");
+            let category = "Activity";
+            if (categoryInput) {
+                const lower = categoryInput.toLowerCase();
+                if (lower.includes("food")) category = "Food";
+                if (lower.includes("attract") || lower.includes("sight")) category = "Attraction";
+            }
+
             const cost = prompt("Estimated Cost ($):", "0") || "0";
             const duration = prompt("Estimated Time (Minutes):", "60") || "60";
-            const tag = prompt("Short Tag (e.g., Food, Park, Views):", "Custom") || "Custom";
+            const tag = prompt("Short Tag (e.g., Park, Views):", "Custom") || "Custom";
 
-            // 4. Build the card with the specific coordinates you clicked
-            const newItem = {
-                id: 'custom_' + Date.now(),
-                title: title,
-                category: "Activity",
-                lat: parseFloat(location.lat),
-                lng: parseFloat(location.lon),
-                cost: parseInt(cost),
-                duration: parseInt(duration),
-                tags: [tag]
-            };
+            const newItem = { id: 'custom_' + Date.now(), title: title, category: category, lat: parseFloat(location.lat), lng: parseFloat(location.lon), cost: parseInt(cost), duration: parseInt(duration), tags: [tag] };
 
-            // 5. Inject into Master List and Save
-            const backlog = document.getElementById('backlog-list');
-            backlog.insertAdjacentHTML('afterbegin', createCardHTML(newItem));
+            // Inject into the correct categorized list
+            document.getElementById(getTargetBacklogId(category)).insertAdjacentHTML('afterbegin', createCardHTML(newItem));
             saveBoardState();
         }
 
         function parseCoordinates(input) {
             if (!input) return { lat: NaN, lng: NaN };
-
             const cleanInput = input.trim();
-
-            // Pattern 1: Standard Decimal (e.g., "40.7128, -74.0060")
-            if (/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(cleanInput)) {
-                const parts = cleanInput.split(',');
-                return { lat: parseFloat(parts[0]), lng: parseFloat(parts[1]) };
-            }
-
-            // Pattern 2: The "Lazy" DMS Format 
-            // FIX: Changed [^\\d]* to [^\\dNSEW]* so it doesn't accidentally eat the directional letters
+            if (/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(cleanInput)) { const parts = cleanInput.split(','); return { lat: parseFloat(parts[0]), lng: parseFloat(parts[1]) }; }
             const dmsRegex = /^(-?\d+)[^\d]+(\d+)[^\d]+([\d.]+)[^\dNSEW]*([NS])?\s*[,;]?\s*(-?\d+)[^\d]+(\d+)[^\d]+([\d.]+)[^\dNSEW]*([EW])?$/i;
             const match = cleanInput.match(dmsRegex);
-
             if (match) {
-                // Calculate Latitude 
                 let lat = Math.abs(parseInt(match[1], 10)) + parseInt(match[2], 10) / 60 + parseFloat(match[3]) / 3600;
                 if (match[1].startsWith('-') || (match[4] && match[4].toUpperCase() === 'S')) lat = -lat;
-
-                // Calculate Longitude
                 let lng = Math.abs(parseInt(match[5], 10)) + parseInt(match[6], 10) / 60 + parseFloat(match[7]) / 3600;
                 if (match[5].startsWith('-') || (match[8] && match[8].toUpperCase() === 'W')) lng = -lng;
-
                 return { lat: lat, lng: lng };
             }
-
             return { lat: NaN, lng: NaN };
         }
 
         function addManualItem() {
             closeSearchModal();
-
             const title = prompt("Name of the place:") || "Custom Location";
+
+            let categoryInput = prompt("Category (Food, Attraction, Activity):", "Activity");
+            let category = "Activity";
+            if (categoryInput) {
+                const lower = categoryInput.toLowerCase();
+                if (lower.includes("food")) category = "Food";
+                if (lower.includes("attract") || lower.includes("sight")) category = "Attraction";
+            }
+
             const cost = prompt("Estimated Cost ($):", "0") || "0";
             const duration = prompt("Estimated Time (Minutes):", "60") || "60";
             const tag = prompt("Short Tag (e.g., Food, Park, Views):", "Custom") || "Custom";
-
-            // Ask for coordinates (now accepts both formats!)
-            const manualCoords = prompt("Optional: Paste coordinates (e.g., 40.7128, -74.0060 OR 40°44'34.8\"N 74°10'06.2\"W) or leave blank:");
-
-            // Run it through our new mathematical parser
+            const manualCoords = prompt("Optional: Paste coordinates (e.g., 40.7128, -74.0060) or leave blank:");
             const { lat, lng } = parseCoordinates(manualCoords);
+            const newItem = { id: 'custom_manual_' + Date.now(), title: title, category: category, lat: lat, lng: lng, cost: parseInt(cost) || 0, duration: parseInt(duration) || 0, tags: [tag] };
 
-            const newItem = {
-                id: 'custom_manual_' + Date.now(),
-                title: title,
-                category: "Activity",
-                lat: lat,
-                lng: lng,
-                cost: parseInt(cost) || 0,
-                duration: parseInt(duration) || 0,
-                tags: [tag]
-            };
-
-            const backlog = document.getElementById('backlog-list');
-            backlog.insertAdjacentHTML('afterbegin', createCardHTML(newItem));
+            // Inject into the correct categorized list
+            document.getElementById(getTargetBacklogId(category)).insertAdjacentHTML('afterbegin', createCardHTML(newItem));
             saveBoardState();
         }
 
-        // --- EXPORT / IMPORT LOGIC ---
         function exportPlan() {
             const data = localStorage.getItem(STORAGE_KEY);
             if (!data) return alert("Nothing to export yet! Move some cards first.");
-
-            // Copy to clipboard
-            navigator.clipboard.writeText(data).then(() => {
-                alert("✅ Itinerary data copied to your clipboard! Text or email this string to your friend.");
-            }).catch(err => {
-                // Fallback for older browsers
-                prompt("Copy this text string to share your plan:", data);
-            });
+            navigator.clipboard.writeText(data).then(() => alert("✅ Itinerary data copied to your clipboard! Text or email this string to your friend.")).catch(err => prompt("Copy this text string to share your plan:", data));
         }
 
         function importPlan() {
             const data = prompt("Paste the itinerary text string here:");
             if (!data) return;
-
-            try {
-                JSON.parse(data); // Validate it's actual JSON
-                localStorage.setItem(STORAGE_KEY, data);
-                alert("✅ Plan successfully imported! The page will now reload.");
-                location.reload();
-            } catch (e) {
-                alert("❌ Error: Invalid data string. Make sure you copied the whole thing.");
-            }
+            try { JSON.parse(data); localStorage.setItem(STORAGE_KEY, data); alert("✅ Plan successfully imported! The page will now reload."); location.reload(); }
+            catch (e) { alert("❌ Error: Invalid data string."); }
         }
 
         function clearPlan() {
             if (confirm("Are you sure you want to completely reset the board back to the default list? This cannot be undone!")) {
-                localStorage.removeItem(STORAGE_KEY);
-                location.reload();
+                localStorage.removeItem(STORAGE_KEY); location.reload();
             }
         }
 
-        // --- INITIALIZATION ---
-        function initializeApp() {
-            initMap();
-
-            // Generate Day Columns FIRST so we have containers to load data into
-            const board = document.getElementById('kanban-board');
-            const daysOfWeek = ["May 4", "May 5", "May 6", "May 7", "May 8", "May 9", "May 10"];
-
-            for (let i = 0; i < 7; i++) {
-                const listId = `day-${i + 1}-list`;
-                const dayColumn = `
-        <div class="column-wrapper">
-          <div class="column-header">
-            <div class="header-top">
-              <span>📅 Day ${i + 1}</span>
-              <button class="map-btn" onclick="renderMapForDay('${listId}', 'Day ${i + 1}')">🗺️ View Route</button>
-            </div>
-            <div style="font-size: 12px; margin-bottom: 5px;">${daysOfWeek[i]}</div>
-            <div class="column-stats" id="stats-day-${i + 1}">$0 | 0m</div>
-          </div>
-          <div class="card-list" id="${listId}"></div>
-        </div>
-      `;
-                board.innerHTML += dayColumn;
-            }
-
-            // Load data from LocalStorage or Default Array
-            loadBoardState();
-
-            // Activate SortableJS
-            const allLists = document.querySelectorAll('.card-list');
-            allLists.forEach(list => {
-                new Sortable(list, {
-                    group: 'shared',
-                    animation: 150,
-                    ghostClass: 'kanban-card-ghost',
-                    onEnd: function (evt) {
-                        updateColumnStats(evt.from);
-                        updateColumnStats(evt.to);
-                        saveBoardState(); // Auto-save every time a card is dropped
-                    }
-                });
-            });
-        }
-
-        initializeApp();
+        initMap();
+        loadBoardState();
     </script>
 </body>
 
