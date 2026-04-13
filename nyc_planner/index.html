@@ -253,6 +253,13 @@
             font-weight: bold;
             margin-bottom: 6px;
             padding-right: 15px;
+            cursor: pointer; /* Changes the mouse to a pointer hand */
+            transition: color 0.2s;
+        }
+
+        .card-title:hover {
+            color: #0079bf; /* Turns blue on hover */
+            text-decoration: underline;
         }
 
         .card-meta {
@@ -2953,7 +2960,6 @@
 
         function createCardHTML(item) {
             const urlAttr = item.url ? `data-url="${item.url}"` : `data-url=""`;
-            // The map link is now styled as a dropdown item
             const infoBtn = item.url ? `<a href="${item.url}" target="_blank" onclick="event.stopPropagation(); closeAllMenus();">🔗 Open in Maps</a>` : ``;
 
             return `
@@ -2966,7 +2972,7 @@
                         <button class="delete-item" onclick="deleteCard(this); closeAllMenus();">✖ Remove Place</button>
                     </div>
                 </div>
-                <div class="card-title">${item.title}</div>
+                <div class="card-title" onclick="focusOnMap(this)" title="View on Map">${item.title}</div>
                 <div class="card-meta">
                 <span>⏱️ ${item.duration}m</span>
                 <span>💵 $${item.cost}</span>
@@ -3285,6 +3291,35 @@
         function closeAllMenus() {
             document.querySelectorAll('.action-dropdown.show').forEach(menu => {
                 menu.classList.remove('show');
+            });
+        }
+        // --- NEW MAP FOCUS HELPER ---
+        function focusOnMap(titleElement) {
+            // Find the parent card to get the data attributes
+            const card = titleElement.closest('.kanban-card');
+            const lat = parseFloat(card.getAttribute('data-lat'));
+            const lng = parseFloat(card.getAttribute('data-lng'));
+            const title = card.getAttribute('data-title');
+
+            if (isNaN(lat) || isNaN(lng)) {
+                alert("No exact coordinates available for this location.");
+                return;
+            }
+
+            // Hide the center screen overlay text
+            document.getElementById('map-overlay').style.opacity = '0';
+
+            // Clear the existing map layers and routes
+            markerGroup.clearLayers();
+            if (routeLayer) map.removeLayer(routeLayer);
+
+            // Add the single pin
+            const marker = L.marker([lat, lng]).addTo(markerGroup);
+            marker.bindPopup(`<b>${title}</b>`).openPopup();
+
+            // Smoothly fly to the location at zoom level 15
+            map.flyTo([lat, lng], 15, {
+                duration: 1.5 // Takes 1.5 seconds to animate
             });
         }
 
