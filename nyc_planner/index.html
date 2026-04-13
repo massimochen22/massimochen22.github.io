@@ -640,7 +640,8 @@
 
         let map;
         let markerGroup;
-        const STORAGE_KEY = 'nyc_trip_plan_v6';
+        let routeLayer; // Add this line
+        const STORAGE_KEY = 'nyc_trip_plan_v7';
 
         function initMap() {
             map = L.map('map').setView([40.7128, -74.0060], 11);
@@ -648,27 +649,104 @@
             markerGroup = L.layerGroup().addTo(map);
         }
 
-        function renderMapForDay(listId, dayTitle) {
+        async function renderMapForDay(listId, dayTitle) {
             const listElement = document.getElementById(listId);
             if (!listElement) return;
+
             document.getElementById('map-overlay').style.opacity = '0';
             markerGroup.clearLayers();
+            if (routeLayer) map.removeLayer(routeLayer); // Clear the previous route line
+
             const cards = listElement.querySelectorAll('.kanban-card');
-            if (cards.length === 0) { alert(`No activities planned for ${dayTitle} yet!`); return; }
+            if (cards.length === 0) {
+                alert(`No activities planned for ${dayTitle} yet!`);
+                return;
+            }
+
             const bounds = [];
+            const coordsForRouting = [];
+
+            // Step 1: Gather coordinates and place base markers
             cards.forEach((card, index) => {
                 const lat = parseFloat(card.getAttribute('data-lat'));
                 const lng = parseFloat(card.getAttribute('data-lng'));
                 const title = card.getAttribute('data-title');
+
                 if (!isNaN(lat) && !isNaN(lng)) {
-                    const marker = L.marker([lat, lng]).bindPopup(`<b>Stop ${index + 1}:</b> ${title}`);
-                    markerGroup.addLayer(marker);
                     bounds.push([lat, lng]);
+                    coordsForRouting.push(`${lng},${lat}`); // OSRM requires Longitude,Latitude order
+
+                    const marker = L.marker([lat, lng]);
+                    marker._tempIndex = index; // Store temporarily for the popup
+                    marker._tempTitle = title;
+                    markerGroup.addLayer(marker);
                 }
             });
-            if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
-        }
 
+            if (bounds.length > 0) map.fitBounds(bounds, { padding: [50, 50] });
+
+            // Step 2: Fetch the route if there are 2 or more stops
+            if (coordsForRouting.length >= 2) {
+                try {
+                    // Call the free public OSRM driving API
+                    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${coordsForRouting.join(';')}?overview=full&geometries=geojson`;
+                    const response = await fetch(osrmUrl);
+                    const data = await response.json();
+
+                    if (data.code === 'Ok') {
+                        const routeCoordinates = data.routes[0].geometry;
+                        const legs = data.routes[0].legs;
+
+                        // Draw the polyline on the map
+                        routeLayer = L.geoJSON(routeCoordinates, {
+                            style: { color: '#0079bf', weight: 4, opacity: 0.7 }
+                        }).addTo(map);
+
+                        // Add popups with travel time to the NEXT stop
+                        let markerIdx = 0;
+                        markerGroup.eachLayer(marker => {
+                            let popupText = `<b>Stop ${marker._tempIndex + 1}:</b> ${marker._tempTitle}`;
+
+                            // If this isn't the final destination, append the drive time and train link
+                            if (markerIdx < legs.length) {
+                                const nextLeg = legs[markerIdx];
+                                const durationMins = Math.round(nextLeg.duration / 60);
+
+                                // Get coordinates for the current stop
+                                const currLat = marker.getLatLng().lat;
+                                const currLng = marker.getLatLng().lng;
+
+                                // Extract exact coordinates for the next stop from our array
+                                const [nextLng, nextLat] = coordsForRouting[markerIdx + 1].split(',');
+
+                                // Build the Google Maps Directions URL (Travel mode: Transit)
+                                const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${currLat},${currLng}&destination=${nextLat},${nextLng}&travelmode=transit`;
+
+                                popupText += `
+                            <hr style="margin:5px 0;">
+                            🚗 Drive to next: <b>~${durationMins} mins</b><br>
+                            🚇 <a href="${googleMapsUrl}" target="_blank" style="color: #0079bf; text-decoration: none; font-weight: bold;">Check Train Route →</a>
+                        `;
+                            }
+
+                            marker.bindPopup(popupText);
+                            markerIdx++;
+                        });
+                    }
+                } catch (err) {
+                    console.error("Routing error:", err);
+                    // Fallback basic popups if the routing server fails
+                    markerGroup.eachLayer(marker => {
+                        marker.bindPopup(`<b>Stop ${marker._tempIndex + 1}:</b> ${marker._tempTitle}`);
+                    });
+                }
+            } else {
+                // Only 1 stop, just bind the standard popup
+                markerGroup.eachLayer(marker => {
+                    marker.bindPopup(`<b>Stop ${marker._tempIndex + 1}:</b> ${marker._tempTitle}`);
+                });
+            }
+        }
         function getCategoryClass(category) {
             if (category === "Food") return "cat-food";
             if (category === "Attraction") return "cat-attraction";
