@@ -385,6 +385,42 @@
                 flex: 1.2;
                 padding: 10px;
             }
+
+            .card-actions {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                display: flex;
+                gap: 4px;
+            }
+
+            /* Ensure mobile users can always see the action buttons */
+            @media (max-width: 768px) {
+
+                .kanban-card .delete-btn,
+                .kanban-card .move-btn {
+                    display: block;
+                }
+            }
+
+            .move-btn {
+                background: none;
+                border: none;
+                color: #a5adba;
+                cursor: pointer;
+                font-size: 14px;
+                padding: 0 4px;
+                display: none;
+                /* Hidden by default on desktop, shown on hover/mobile */
+            }
+
+            .kanban-card:hover .move-btn {
+                display: block;
+            }
+
+            .move-btn:hover {
+                color: #0079bf;
+            }
         }
     </style>
 </head>
@@ -420,6 +456,16 @@
                 Can't find it? <a href="#" onclick="addManualItem(); return false;"
                     style="color: #0079bf; text-decoration: underline; font-weight: bold;">Add it manually</a>
             </div>
+        </div>
+    </div> <div class="modal-overlay" id="move-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span>➡️ Move Card To...</span>
+                <button class="close-modal" onclick="closeMoveModal()">✖</button>
+            </div>
+            <ul id="move-options-list" class="search-results-list"
+                style="display:block; max-height: 50vh; margin: 0; padding: 0;">
+            </ul>
         </div>
     </div>
 
@@ -641,12 +687,67 @@
         let map;
         let markerGroup;
         let routeLayer; // Add this line
+        let cardToMove = null;
         const STORAGE_KEY = 'nyc_trip_plan_v7';
 
         function initMap() {
             map = L.map('map').setView([40.7128, -74.0060], 11);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '© OpenStreetMap © CARTO' }).addTo(map);
             markerGroup = L.layerGroup().addTo(map);
+        }
+        function openMoveModal(btnElement) {
+            cardToMove = btnElement.closest('.kanban-card');
+            const currentListId = cardToMove.parentElement.id;
+            const optionsList = document.getElementById('move-options-list');
+
+            optionsList.innerHTML = ''; // Clear old options
+
+            // Loop through all columns to build the destination list
+            document.querySelectorAll('.column-wrapper').forEach(col => {
+                const list = col.querySelector('.card-list');
+                if (!list) return;
+
+                const listId = list.id;
+                // Skip the column the card is already in
+                if (listId === currentListId) return;
+
+                // Extract the title of the column
+                let title = "";
+                if (listId.startsWith('backlog')) {
+                    title = col.querySelector('.header-top').innerText.trim();
+                } else {
+                    const titleEl = col.querySelector('.col-title');
+                    title = titleEl ? titleEl.getAttribute('data-title') : "Unknown Day";
+                }
+
+                const li = document.createElement('li');
+                li.className = 'search-result-item';
+                li.innerHTML = `Move to <b>${title}</b>`;
+
+                // When clicked, move the card
+                li.onclick = () => {
+                    const newList = document.getElementById(listId);
+                    const oldList = cardToMove.parentElement;
+
+                    newList.appendChild(cardToMove);
+
+                    // Update the math and save
+                    updateColumnStats(oldList);
+                    updateColumnStats(newList);
+                    saveBoardState();
+
+                    closeMoveModal();
+                };
+
+                optionsList.appendChild(li);
+            });
+
+            document.getElementById('move-modal').style.display = 'flex';
+        }
+
+        function closeMoveModal() {
+            document.getElementById('move-modal').style.display = 'none';
+            cardToMove = null;
         }
 
         async function renderMapForDay(listId, dayTitle) {
@@ -764,7 +865,10 @@
         function createCardHTML(item) {
             return `
             <div class="kanban-card ${getCategoryClass(item.category)}" data-id="${item.id}" data-category="${item.category}" data-lat="${item.lat}" data-lng="${item.lng}" data-title="${item.title}" data-cost="${item.cost}" data-duration="${item.duration}" data-tags="${item.tags.join(',')}">
-                <button class="delete-btn" onclick="deleteCard(this)" title="Remove item">✖</button>
+                <div class="card-actions">
+                    <button class="move-btn" onclick="openMoveModal(this)" title="Move item">↗️</button>
+                    <button class="delete-btn" onclick="deleteCard(this)" title="Remove item">✖</button>
+                </div>
                 <div class="card-title">${item.title}</div>
                 <div class="card-meta">
                 <span>⏱️ ${item.duration}m</span>
